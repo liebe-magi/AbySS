@@ -1,14 +1,34 @@
-use abyss::{eval::evaluate, parser::parse_expr};
+use abyss::{
+    eval::{evaluate_statements, Environment},
+    parser::parse_statements,
+};
+use std::io::{self, Write};
 
 fn main() {
-    let input = "6 * 7";
-    match parse_expr(input) {
-        Ok((remaining, result)) => {
-            println!("Parsed expression: {:?}", result);
-            let evaluated = evaluate(&result);
-            println!("Evaluated expression: {}", evaluated);
-            println!("Remaining input: {:?}", remaining);
+    let mut env = Environment::new();
+
+    loop {
+        println!("Enter an expression: ");
+        io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+
+        if input.trim() == "exit" {
+            break;
         }
-        Err(e) => println!("Error: {:?}", e),
+
+        match parse_statements(&input) {
+            Ok((_, ast)) => {
+                println!("AST: {:?}", ast);
+                let result = evaluate_statements(&ast, &mut env);
+                match &result {
+                    abyss::eval::EvalResult::Number(n) => println!("Result: {}", n),
+                    abyss::eval::EvalResult::Text(s) => println!("Result: {}", s),
+                    abyss::eval::EvalResult::Void => println!("Result: void"),
+                }
+            }
+            Err(e) => println!("Error: {:?}", e),
+        }
     }
 }
