@@ -38,7 +38,8 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> EvalResult {
         AST::Rune(s) => EvalResult::Rune(s.clone()),
         AST::Add(left, right) => match (evaluate(left, env), evaluate(right, env)) {
             (EvalResult::Arcana(l), EvalResult::Arcana(r)) => EvalResult::Arcana(l + r),
-            _ => panic!("Add operation requires either two Arcana!"),
+            (EvalResult::Rune(l), EvalResult::Rune(r)) => EvalResult::Rune(format!("{}{}", l, r)),
+            _ => panic!("Add operation requires either two Arcana or Rune!"),
         },
         AST::Subtract(left, right) => match (evaluate(left, env), evaluate(right, env)) {
             (EvalResult::Arcana(l), EvalResult::Arcana(r)) => EvalResult::Arcana(l - r),
@@ -66,5 +67,21 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> EvalResult {
             Some(Value::Rune(s)) => EvalResult::Rune(s.clone()),
             None => panic!("Variable {} is not defined!", name),
         },
+        AST::Unveil(args) => {
+            let outputs: Vec<String> = args
+                .iter()
+                .map(|arg| evaluate(arg, env))
+                .collect::<Vec<EvalResult>>()
+                .iter()
+                .map(|result| match result {
+                    EvalResult::Arcana(n) => n.to_string(),
+                    EvalResult::Rune(s) => s.clone(),
+                    EvalResult::Abyss => "".to_string(),
+                })
+                .collect();
+            let output_str = outputs.join("");
+            println!("{}", output_str);
+            EvalResult::Abyss
+        }
     }
 }

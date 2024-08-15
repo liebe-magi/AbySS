@@ -1,22 +1,19 @@
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
 
 statements = { SOI ~ statement* ~ EOI }
-statement  = { forge_var | numeric_expr ~ ";" | string_expr ~ ";" }
+statement  = { (forge_var | unveil | expression) ~ ";" }
 
-forge_var = { "forge" ~ identifier ~ ":" ~ type ~ "=" ~ expression ~ ";" }
+forge_var = { "forge" ~ identifier ~ ":" ~ type ~ "=" ~ expression }
+unveil    = { "unveil" ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
 
 identifier = @{ ASCII_ALPHANUMERIC+ }
 type       =  { "arcana" | "rune" }
 arcana     = @{ ASCII_DIGIT+ }
 rune       = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 
-expression   = { numeric_expr | string_expr }
-numeric_expr = { term ~ (add_op ~ term)* }
-string_expr  = { string_factor ~ ("+" ~ string_factor)* }
-
-term          = { factor ~ (mul_op ~ factor)* }
-factor        = { arcana | identifier | "(" ~ numeric_expr ~ ")" }
-string_factor = { rune | identifier }
+expression = { term ~ (add_op ~ term)* }
+term       = { factor ~ (mul_op ~ factor)* }
+factor     = { arcana | rune | identifier | "(" ~ expression ~ ")" }
 
 add_op = { "+" | "-" }
 mul_op = { "*" | "/" }

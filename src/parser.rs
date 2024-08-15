@@ -19,8 +19,7 @@ pub fn parse(input: &str) -> Result<Pair<Rule>, Error<Rule>> {
 pub fn build_ast(pair: Pair<Rule>) -> AST {
     match pair.as_rule() {
         Rule::statement => build_ast(pair.into_inner().next().unwrap()),
-        Rule::expression => build_ast(pair.into_inner().next().unwrap()),
-        Rule::numeric_expr => {
+        Rule::expression => {
             let mut inner = pair.into_inner();
             let mut ast = build_ast(inner.next().unwrap());
 
@@ -31,17 +30,6 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
                     "-" => AST::Subtract(Box::new(ast), Box::new(right)),
                     _ => unreachable!(),
                 };
-            }
-
-            ast
-        }
-        Rule::string_expr => {
-            let mut inner = pair.into_inner();
-            let mut ast = build_ast(inner.next().unwrap());
-
-            while let Some(_) = inner.next() {
-                let right = build_ast(inner.next().unwrap());
-                ast = AST::Add(Box::new(ast), Box::new(right));
             }
 
             ast
@@ -64,18 +52,12 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
             ast
         }
         Rule::factor => build_ast(pair.into_inner().next().unwrap()),
-        Rule::string_factor => {
-            let inner = pair.into_inner().next().unwrap();
-            build_ast(inner)
-        }
         Rule::arcana => {
-            // 数値の場合、Numberノードを返す
             let value = pair.as_str().parse().unwrap();
             AST::Arcana(value)
         }
         Rule::rune => {
-            // 文字列の場合、Stringノードを返す
-            let value = pair.as_str().to_string();
+            let value = pair.as_str().trim_matches('"').to_string();
             AST::Rune(value)
         }
         Rule::forge_var => {
@@ -88,6 +70,11 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
         Rule::identifier => {
             let var_name = pair.as_str().to_string();
             AST::Var(var_name)
+        }
+        Rule::unveil => {
+            let inner = pair.into_inner();
+            let args = inner.map(build_ast).collect();
+            AST::Unveil(args)
         }
         _ => {
             panic!("Unexpected rule: {:?}", pair.as_rule())

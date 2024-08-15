@@ -8,4 +8,5 @@ pub enum AST {
     Divide(Box<AST>, Box<AST>),
     VarAssign(String, Box<AST>),
     Var(String),
+    Unveil(Vec<AST>),
 }
