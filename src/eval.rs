@@ -2,14 +2,14 @@ use crate::ast::AST;
 use std::collections::HashMap;
 
 pub enum EvalResult {
-    Number(i64),
-    Text(String),
-    Void,
+    Arcana(i64),
+    Rune(String),
+    Abyss,
 }
 
 pub enum Value {
-    Number(i64),
-    Text(String),
+    Arcana(i64),
+    Rune(String),
 }
 
 pub struct Environment {
@@ -32,80 +32,34 @@ impl Environment {
     }
 }
 
-fn evaluate(ast: &AST, env: &mut Environment) -> EvalResult {
+pub fn evaluate(ast: &AST, env: &mut Environment) -> EvalResult {
     match ast {
-        AST::Number(n) => EvalResult::Number(*n),
-        AST::String(s) => EvalResult::Text(s.clone()),
+        AST::Arcana(n) => EvalResult::Arcana(*n),
+        AST::Rune(s) => EvalResult::Rune(s.clone()),
         AST::Add(left, right) => match (evaluate(left, env), evaluate(right, env)) {
-            (EvalResult::Number(l), EvalResult::Number(r)) => EvalResult::Number(l + r),
-            (EvalResult::Text(l), EvalResult::Text(r)) => EvalResult::Text(format!("{}{}", l, r)),
-            _ => panic!("Add operation requires either two numbers or two strings"),
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => EvalResult::Arcana(l + r),
+            _ => panic!("Add operation requires either two Arcana!"),
         },
-        AST::Subtract(left, right) => {
-            if let (EvalResult::Number(left), EvalResult::Number(right)) =
-                (evaluate(left, env), evaluate(right, env))
-            {
-                EvalResult::Number(left - right)
-            } else {
-                panic!("Subtract operation requires two numbers!");
-            }
-        }
-        AST::Multiply(left, right) => {
-            if let (EvalResult::Number(left), EvalResult::Number(right)) =
-                (evaluate(left, env), evaluate(right, env))
-            {
-                EvalResult::Number(left * right)
-            } else {
-                panic!("Multiply operation requires two numbers!");
-            }
-        }
-        AST::Divide(left, right) => {
-            if let (EvalResult::Number(left), EvalResult::Number(right)) =
-                (evaluate(left, env), evaluate(right, env))
-            {
-                EvalResult::Number(left / right)
-            } else {
-                panic!("Divide operation requires two numbers!");
-            }
-        }
-        AST::VarAssign(name, expr) => {
-            if let EvalResult::Number(val) = evaluate(expr, env) {
-                env.set_var(name.clone(), Value::Number(val));
-                EvalResult::Void
-            } else {
-                panic!("Variable assignment requires a number!");
-            }
-        }
-        AST::RuneVarAssign(name, expr) => {
-            if let EvalResult::Text(val) = evaluate(expr, env) {
-                env.set_var(name.clone(), Value::Text(val));
-                EvalResult::Void
-            } else {
-                panic!("Variable assignment requires a string!");
-            }
-        }
-        AST::Var(name) => match env.get_var(name) {
-            Some(Value::Number(n)) => EvalResult::Number(*n),
-            Some(Value::Text(s)) => EvalResult::Text(s.clone()),
-            None => panic!("Variable not found: {}", name),
+        AST::Subtract(left, right) => match (evaluate(left, env), evaluate(right, env)) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => EvalResult::Arcana(l - r),
+            _ => panic!("Subtract operation requires either two Arcana!"),
         },
-        AST::Unveil(expr) => {
-            let val = evaluate(expr, env);
-            match &val {
-                EvalResult::Number(n) => println!("{}", n),
-                EvalResult::Text(s) => println!("{}", s),
-                EvalResult::Void => (),
-            }
-            val
+        AST::Multiply(left, right) => match (evaluate(left, env), evaluate(right, env)) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => EvalResult::Arcana(l * r),
+            _ => panic!("Multiply operation requires either two Arcana!"),
+        },
+        AST::Divide(left, right) => match (evaluate(left, env), evaluate(right, env)) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => EvalResult::Arcana(l / r),
+            _ => panic!("Divide operation requires either two Arcana!"),
+        },
+        AST::VarAssign(name, value) => {
+            let value = match evaluate(value, env) {
+                EvalResult::Arcana(n) => Value::Arcana(n),
+                EvalResult::Rune(s) => Value::Rune(s),
+                _ => panic!("VarAssign operation requires either Arcana or Rune!"),
+            };
+            env.set_var(name.clone(), value);
+            EvalResult::Abyss
         }
     }
-}
-
-pub fn evaluate_statements(statements: &[AST], env: &mut Environment) -> EvalResult {
-    let mut last_result = EvalResult::Void;
-    for stmt in statements {
-        println!("Evaluating: {:?}", stmt);
-        last_result = evaluate(stmt, env);
-    }
-    last_result
 }

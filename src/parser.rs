@@ -1,112 +1,93 @@
+use pest::error::Error;
+use pest::iterators::Pair;
+use pest::Parser;
+use pest_derive::Parser;
+
 use crate::ast::AST;
-use nom::branch::alt;
-use nom::bytes::complete::{tag, take_until};
-use nom::character::complete::{alpha1, alphanumeric0, char, space0};
-use nom::combinator::recognize;
-use nom::multi::{fold_many0, many0};
-use nom::sequence::{delimited, pair, preceded, terminated, tuple};
-use nom::{character::complete::digit1, combinator::map_res, IResult};
 
-fn parse_number(input: &str) -> IResult<&str, AST> {
-    map_res(preceded(space0, digit1), |s: &str| {
-        s.parse::<i64>().map(AST::Number)
-    })(input)
+#[derive(Parser)]
+#[grammar = "abyss.pest"] // 文法ファイルを指定
+pub struct AbyssParser;
+
+pub fn parse(input: &str) -> Result<Pair<Rule>, Error<Rule>> {
+    match AbyssParser::parse(Rule::statements, input) {
+        Ok(mut pairs) => Ok(pairs.next().unwrap()),
+        Err(e) => Err(e),
+    }
 }
 
-fn parse_string(input: &str) -> IResult<&str, AST> {
-    let (input, content) = delimited(char('"'), take_until("\""), char('"'))(input.trim())?; // ダブルクォートで囲まれた文字列をパース
+pub fn build_ast(pair: Pair<Rule>) -> AST {
+    match pair.as_rule() {
+        Rule::statement => build_ast(pair.into_inner().next().unwrap()),
+        Rule::expression => build_ast(pair.into_inner().next().unwrap()),
+        Rule::numeric_expr => {
+            let mut inner = pair.into_inner();
+            let mut ast = build_ast(inner.next().unwrap());
 
-    Ok((input, AST::String(content.to_string()))) // 文字列をASTに変換
-}
-
-fn parse_term(input: &str) -> IResult<&str, AST> {
-    let (input, init) = alt((parse_number, parse_var))(input)?;
-
-    fold_many0(
-        pair(
-            preceded(space0, alt((char('*'), char('/')))),
-            alt((parse_number, parse_var)),
-        ),
-        move || init.clone(),
-        |acc, (op, val)| {
-            if op == '*' {
-                AST::Multiply(Box::new(acc), Box::new(val))
-            } else {
-                AST::Divide(Box::new(acc), Box::new(val))
+            while let Some(operator) = inner.next() {
+                let right = build_ast(inner.next().unwrap());
+                ast = match operator.as_str() {
+                    "+" => AST::Add(Box::new(ast), Box::new(right)),
+                    "-" => AST::Subtract(Box::new(ast), Box::new(right)),
+                    _ => unreachable!(),
+                };
             }
-        },
-    )(input)
-}
 
-fn parse_var_assign(input: &str) -> IResult<&str, AST> {
-    let (input, (_, var_name, _, _, value)) = tuple((
-        tag("forge"),
-        preceded(space0, recognize(pair(alpha1, alphanumeric0))),
-        preceded(space0, char(':')),
-        preceded(space0, tag("arcana")),
-        preceded(space0, preceded(char('='), parse_number)),
-    ))(input)?;
+            ast
+        }
+        Rule::string_expr => {
+            let mut inner = pair.into_inner();
+            let mut ast = build_ast(inner.next().unwrap());
 
-    Ok((input, AST::VarAssign(var_name.to_string(), Box::new(value))))
-}
-
-fn parse_rune_var_assign(input: &str) -> IResult<&str, AST> {
-    let (input, (_, var_name, _, _, value)) = tuple((
-        tag("forge"),
-        preceded(space0, recognize(pair(alpha1, alphanumeric0))),
-        preceded(space0, char(':')),
-        preceded(space0, tag("rune")),
-        preceded(space0, preceded(char('='), parse_string)),
-    ))(input)?;
-
-    Ok((
-        input,
-        AST::RuneVarAssign(var_name.to_string(), Box::new(value)),
-    ))
-}
-
-fn parse_var(input: &str) -> IResult<&str, AST> {
-    let (input, var_name) = preceded(space0, recognize(pair(alpha1, alphanumeric0)))(input)?;
-    Ok((input, AST::Var(var_name.to_string())))
-}
-
-fn parse_unveil(input: &str) -> IResult<&str, AST> {
-    let (input, (_, _, expr, _)) = tuple((
-        preceded(space0, tag("unveil")),
-        char('('),
-        parse_expr,
-        char(')'),
-    ))(input)?;
-
-    Ok((input, AST::Unveil(Box::new(expr))))
-}
-
-fn parse_expr(input: &str) -> IResult<&str, AST> {
-    let input = input.trim();
-    let (input, init) = alt((
-        parse_rune_var_assign,
-        parse_var_assign,
-        parse_unveil,
-        parse_term,
-        parse_string,
-        parse_var,
-    ))(input)?;
-
-    let (input, result) = fold_many0(
-        pair(preceded(space0, alt((char('+'), char('-')))), parse_term),
-        move || init.clone(),
-        |acc, (op, val)| {
-            if op == '+' {
-                AST::Add(Box::new(acc), Box::new(val))
-            } else {
-                AST::Subtract(Box::new(acc), Box::new(val))
+            while let Some(_) = inner.next() {
+                let right = build_ast(inner.next().unwrap());
+                ast = AST::Add(Box::new(ast), Box::new(right));
             }
-        },
-    )(input)?;
 
-    Ok((input, result))
-}
+            ast
+        }
+        Rule::term => {
+            let mut inner = pair.into_inner();
+            let mut ast = build_ast(inner.next().unwrap()); // 最初のfactorを取得
 
-pub fn parse_statements(input: &str) -> IResult<&str, Vec<AST>> {
-    many0(terminated(parse_expr, preceded(space0, char(';'))))(input.trim())
+            // mul_opとfactorのペアを処理
+            while let Some(operator) = inner.next() {
+                // 演算子を取得
+                let right = build_ast(inner.next().unwrap()); // 右側のfactorを取得
+                ast = match operator.as_str() {
+                    "*" => AST::Multiply(Box::new(ast), Box::new(right)),
+                    "/" => AST::Divide(Box::new(ast), Box::new(right)),
+                    _ => unreachable!(),
+                };
+            }
+
+            ast
+        }
+        Rule::factor => build_ast(pair.into_inner().next().unwrap()),
+        Rule::arcana => {
+            // 数値の場合、Numberノードを返す
+            let value = pair.as_str().parse().unwrap();
+            AST::Arcana(value)
+        }
+        Rule::rune => {
+            // 文字列の場合、Stringノードを返す
+            let value = pair.as_str().to_string();
+            AST::Rune(value)
+        }
+        Rule::forge_var => {
+            let mut inner = pair.into_inner();
+            let var_name = inner.next().unwrap().as_str().to_string();
+            let var_type = inner.next().unwrap().as_str();
+
+            let value = match var_type {
+                "arcana" => build_ast(inner.next().unwrap()),
+                "rune" => build_ast(inner.next().unwrap()),
+                _ => unreachable!(),
+            };
+            AST::VarAssign(var_name, Box::new(value))
+        }
+        _ => {
+            panic!("Unexpected rule: {:?}", pair.as_rule())
+        }
+    }
 }

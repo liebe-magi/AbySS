@@ -1,0 +1,12 @@
+forge hello: rune = "Hello World from AbySS";
+unveil(hello);
+
+unveil("Calc test");
+unveil("1 + 2 + 3");
+unveil(1+2+3);
+unveil("1 + 2 * 3");
+unveil(1+2*3);
+unveil("1 - 2 - 3");
+unveil(1-2-3);
+unveil("8 - 6 / 3");
+unveil(8 - 6 / 3);

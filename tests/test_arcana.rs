@@ -1,188 +1,320 @@
-use abyss::eval::{evaluate_statements, Environment, EvalResult};
-use abyss::parser::parse_statements;
+mod test_base;
+
+use abyss::eval::EvalResult;
+use test_base::test_base;
 
 #[test]
-fn test_parse_number_1() {
-    let mut env = Environment::new();
+fn test_parse_arcana_1() {
     let input = "123;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 123),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 123),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_parse_number_2() {
-    let mut env = Environment::new();
+fn test_parse_arcana_2() {
     let input = "00123;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 123),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 123),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_parse_number_3() {
-    let mut env = Environment::new();
+fn test_parse_arcana_3() {
     let input = " 123;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 123),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 123),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_add_1() {
-    let mut env = Environment::new();
+fn test_addition_1() {
     let input = "1+2;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 3),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 1 + 2),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_add_2() {
-    let mut env = Environment::new();
+fn test_addition_2() {
     let input = "123 + 456;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 579),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 123 + 456),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_add_3() {
-    let mut env = Environment::new();
-    let input = " 123 + 456 + 789 ;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 1368),
-        _ => panic!("Expected a number result"),
+fn test_addition_3() {
+    let input = " 123 + 456 + 789 ; ";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 123 + 456 + 789),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_subtraction() {
-    let mut env = Environment::new();
+fn test_subtraction_1() {
     let input = "10 - 3;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 7),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 10 - 3),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_multiplication() {
-    let mut env = Environment::new();
+fn test_subtraction_2() {
+    let input = "10 - 3 - 2;";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 10 - 3 - 2),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_multiplication_1() {
     let input = "6 * 7;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 42),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 6 * 7),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_division() {
-    let mut env = Environment::new();
+fn test_multiplication_2() {
+    let input = "6 * 7 * 2;";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 6 * 7 * 2),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_division_1() {
     let input = "20 / 5;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 4),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 20 / 5),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_division_2() {
+    let input = "20 / 5 / 2;";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 20 / 5 / 2),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
 fn test_combined_operations_1() {
-    let mut env = Environment::new();
     let input = "10 + 20 * 3 - 5 / 5;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 69),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 10 + 20 * 3 - 5 / 5),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
 fn test_combined_operations_2() {
-    let mut env = Environment::new();
-    let input = " 10 + 20 * 3  - 5 / 5 + 1 ;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 70),
-        _ => panic!("Expected a number result"),
+    let input = "(10 + 20) * 3;";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, (10 + 20) * 3),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
 fn test_combined_operations_3() {
-    let mut env = Environment::new();
-    let input = "10 + 20 *3 - 5/ 5 + 1 * 2;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 71),
-        _ => panic!("Expected a number result"),
+    let input = "10 * (20 + 3) / 5;";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 10 * (20 + 3) / 5),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_evaluate_statements_var_assign() {
-    let mut env = Environment::new();
+fn test_combined_operations_4() {
+    let input = "(10 + 20) / (5 - 3);";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, (10 + 20) / (5 - 3)),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_combined_operations_5() {
+    let input = "(1 + 2) / 3;";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, (1 + 2) / 3),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_combined_operations_6() {
+    let input = "10 / (2 + 3);";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            match &results[0] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 10 / (2 + 3)),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_evaluate_arcana_assign() {
     let input = "forge x: arcana = 42;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Void => (),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 1);
+            assert!(matches!(&results[0], EvalResult::Abyss));
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_evaluate_statements_var_usage() {
-    let mut env = Environment::new();
+fn test_evaluate_arcana_usage() {
     let input = "forge x: arcana = 10; x + 5;";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 15),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 2);
+            match &results[1] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 10 + 5),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
 
 #[test]
-fn test_evaluate_statements_var_usage_multiline() {
-    let mut env = Environment::new();
+fn test_evaluate_arcana_usage_multiline() {
     let input = "
         forge x: arcana = 10;
-        x + 5;
         forge y: arcana = 3;
-        x + y * 2;
-        unveil(3 * x + 2 * y);
+        3 * x + 2 * y;
     ";
-    let ast = parse_statements(input).unwrap().1;
-    let result = evaluate_statements(&ast, &mut env);
-    match result {
-        EvalResult::Number(n) => assert_eq!(n, 36),
-        _ => panic!("Expected a number result"),
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 3);
+            match &results[2] {
+                EvalResult::Arcana(n) => assert_eq!(*n, 3 * 10 + 2 * 3),
+                _ => panic!("Expected a number result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
     }
 }
