@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
 
 statements = { SOI ~ statement* ~ EOI }
-statement  = { forge_var | expression ~ ";" }
+statement  = { forge_var | numeric_expr ~ ";" | string_expr ~ ";" }
 
 forge_var = { "forge" ~ identifier ~ ":" ~ type ~ "=" ~ expression ~ ";" }
 
@@ -12,10 +12,11 @@ rune       = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 
 expression   = { numeric_expr | string_expr }
 numeric_expr = { term ~ (add_op ~ term)* }
-string_expr  = { rune ~ ("+" ~ rune)* }
+string_expr  = { string_factor ~ ("+" ~ string_factor)* }
 
-term   = { factor ~ (mul_op ~ factor)* }
-factor = { arcana | "(" ~ numeric_expr ~ ")" }
+term          = { factor ~ (mul_op ~ factor)* }
+factor        = { arcana | identifier | "(" ~ numeric_expr ~ ")" }
+string_factor = { rune | identifier }
 
 add_op = { "+" | "-" }
 mul_op = { "*" | "/" }

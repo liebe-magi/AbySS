@@ -20,7 +20,7 @@ fn test_parse_rune() {
 
 #[test]
 fn test_evaluate_rune_assign() {
-    let input = r#"forge message: rune = "Hello World from Abyss!"; rune;"#;
+    let input = r#"forge message: rune = "Hello World from Abyss!"; message;"#;
     match test_base(input) {
         Ok(results) => {
             assert_eq!(results.len(), 2);

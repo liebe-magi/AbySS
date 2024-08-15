@@ -10,6 +10,7 @@ pub fn test_base(input: &str) -> Result<Vec<EvalResult>, Error<Rule>> {
             for inner_pair in pair.into_inner() {
                 if inner_pair.as_rule() != abyss::parser::Rule::EOI {
                     let ast = build_ast(inner_pair);
+                    println!("{:?}", ast);
                     let result = evaluate(&ast, &mut env);
                     results.push(result);
                 }

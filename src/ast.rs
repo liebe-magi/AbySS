@@ -7,4 +7,5 @@ pub enum AST {
     Multiply(Box<AST>, Box<AST>),
     Divide(Box<AST>, Box<AST>),
     VarAssign(String, Box<AST>),
+    Var(String),
 }

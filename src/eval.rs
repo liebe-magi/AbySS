@@ -61,5 +61,10 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> EvalResult {
             env.set_var(name.clone(), value);
             EvalResult::Abyss
         }
+        AST::Var(name) => match env.get_var(name) {
+            Some(Value::Arcana(n)) => EvalResult::Arcana(*n),
+            Some(Value::Rune(s)) => EvalResult::Rune(s.clone()),
+            None => panic!("Variable {} is not defined!", name),
+        },
     }
 }

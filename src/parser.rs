@@ -64,6 +64,10 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
             ast
         }
         Rule::factor => build_ast(pair.into_inner().next().unwrap()),
+        Rule::string_factor => {
+            let inner = pair.into_inner().next().unwrap();
+            build_ast(inner)
+        }
         Rule::arcana => {
             // 数値の場合、Numberノードを返す
             let value = pair.as_str().parse().unwrap();
@@ -77,14 +81,13 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
         Rule::forge_var => {
             let mut inner = pair.into_inner();
             let var_name = inner.next().unwrap().as_str().to_string();
-            let var_type = inner.next().unwrap().as_str();
-
-            let value = match var_type {
-                "arcana" => build_ast(inner.next().unwrap()),
-                "rune" => build_ast(inner.next().unwrap()),
-                _ => unreachable!(),
-            };
+            inner.next();
+            let value = build_ast(inner.next().unwrap());
             AST::VarAssign(var_name, Box::new(value))
+        }
+        Rule::identifier => {
+            let var_name = pair.as_str().to_string();
+            AST::Var(var_name)
         }
         _ => {
             panic!("Unexpected rule: {:?}", pair.as_rule())
