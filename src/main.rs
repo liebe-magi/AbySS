@@ -2,33 +2,56 @@ use abyss::{
     eval::{evaluate_statements, Environment},
     parser::parse_statements,
 };
-use std::io::{self, Write};
+use clap::{Parser, Subcommand};
+use std::fs;
+
+#[derive(Parser)]
+#[command(name = "abyss")]
+#[command(about = "AbySS: Advanced-scripting by Symbolic Syntax", long_about = None)]
+#[command(version)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Execute a .aby script file
+    Invoke {
+        /// The path to the script file
+        script: String,
+    },
+    /// Start the interactive interpreter
+    Cast,
+}
+
+fn execute_script(script: &str) {
+    // スクリプトをパースし、実行
+    println!("Executing script: \n{}", script);
+    // ここにAbyssスクリプトのパースと実行のロジックを追加
+}
+
+fn start_interpreter() {
+    // インタープリタモードの実装
+    println!("Starting Abyss interpreter...");
+    // ここにインタープリタのロジックを追加
+}
 
 fn main() {
-    let mut env = Environment::new();
+    let cli = Cli::parse();
 
-    loop {
-        println!("Enter an expression: ");
-        io::stdout().flush().unwrap();
-
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-
-        if input.trim() == "exit" {
-            break;
-        }
-
-        match parse_statements(&input) {
-            Ok((_, ast)) => {
-                println!("AST: {:?}", ast);
-                let result = evaluate_statements(&ast, &mut env);
-                match &result {
-                    abyss::eval::EvalResult::Number(n) => println!("Result: {}", n),
-                    abyss::eval::EvalResult::Text(s) => println!("Result: {}", s),
-                    abyss::eval::EvalResult::Void => println!("Result: void"),
-                }
+    match &cli.command {
+        Commands::Invoke { script } => {
+            // .abyファイルを読み込んで実行
+            if let Ok(contents) = fs::read_to_string(script) {
+                execute_script(&contents);
+            } else {
+                eprintln!("Error: Could not read the script file.");
             }
-            Err(e) => println!("Error: {:?}", e),
+        }
+        Commands::Cast => {
+            // インタープリタモードの開始
+            start_interpreter();
         }
     }
 }
