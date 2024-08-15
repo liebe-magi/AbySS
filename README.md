@@ -154,7 +154,3 @@ greet("AbySS");
 
 ## **License**
 AbySS is open-source software licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-This README provides an overview of AbySS, its syntax, and usage. Please note that many features are still under development, and the language is actively evolving. Contributions and feedback are welcome!
