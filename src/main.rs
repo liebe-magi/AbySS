@@ -36,7 +36,10 @@ fn execute_script(script: &str) {
             for inner_pair in pair.into_inner() {
                 if inner_pair.as_rule() != abyss::parser::Rule::EOI {
                     let ast = build_ast(inner_pair);
-                    evaluate(&ast, &mut env);
+                    match evaluate(&ast, &mut env) {
+                        Ok(_) => {}
+                        Err(e) => panic!("Error: {}", e),
+                    }
                 }
             }
         }
@@ -75,9 +78,14 @@ fn start_interpreter() {
                         if inner_pair.as_rule() != abyss::parser::Rule::EOI {
                             let ast = build_ast(inner_pair);
                             match evaluate(&ast, &mut env) {
-                                EvalResult::Arcana(n) => println!("{}", n),
-                                EvalResult::Rune(s) => println!("{}", s),
-                                EvalResult::Abyss => {}
+                                Ok(result) => match result {
+                                    EvalResult::Omen(b) => println!("{}", b),
+                                    EvalResult::Arcana(n) => println!("{}", n),
+                                    EvalResult::Aether(n) => println!("{}", n),
+                                    EvalResult::Rune(s) => println!("{}", s),
+                                    EvalResult::Abyss => {}
+                                },
+                                Err(e) => println!("Error: {}", e),
                             }
                         }
                     }

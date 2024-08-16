@@ -1,5 +1,5 @@
 forge hello: rune = "Hello World from AbySS!";
-unveil(hello);
+unveil(hello, "\n");
 
 unveil("Calc test");
 unveil("1 + 2 + 3 = ", 1 + 2 + 3);
@@ -7,3 +7,5 @@ unveil("1 + 2 * 3 = ", 1 + 2 * 3);
 unveil("1 - 2 - 3 = ", 1 - 2 - 3);
 unveil("8 - 6 / 3 = ", 8 - 6 / 3);
 unveil("3 * (2 + 3) = ", 3 * (2 + 3));
+unveil("3 ^ (2 + 3) = ", 3 ^ (2 + 3));
+unveil("3.0 ** (-2.0) = ", 3.0 ** (-2.0));

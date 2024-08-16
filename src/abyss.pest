@@ -7,13 +7,20 @@ forge_var = { "forge" ~ identifier ~ ":" ~ type ~ "=" ~ expression }
 unveil    = { "unveil" ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
 
 identifier = @{ ASCII_ALPHANUMERIC+ }
-type       =  { "arcana" | "rune" }
-arcana     = @{ ASCII_DIGIT+ }
+type       =  { "omen" | "aether" | "arcana" | "rune" }
+omen       = @{ "boon" | "hex" }
+aether     = @{ sign? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+arcana     = @{ sign? ~ ASCII_DIGIT+ }
 rune       = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 
-expression = { term ~ (add_op ~ term)* }
+sign = { "+" | "-" }
+
+expression = { trans_expr | power ~ (add_op ~ power)* }
+trans_expr = { "trans" ~ "(" ~ expression ~ "as" ~ type ~ ")" }
+power      = { term ~ (pow_op ~ term)* }
 term       = { factor ~ (mul_op ~ factor)* }
-factor     = { arcana | rune | identifier | "(" ~ expression ~ ")" }
+factor     = { omen | aether | arcana | rune | identifier | "(" ~ expression ~ ")" }
 
 add_op = { "+" | "-" }
 mul_op = { "*" | "/" }
+pow_op = { "^" | "**" }

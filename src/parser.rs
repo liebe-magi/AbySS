@@ -34,6 +34,21 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
 
             ast
         }
+        Rule::power => {
+            let mut inner = pair.into_inner();
+            let mut ast = build_ast(inner.next().unwrap());
+
+            while let Some(operator) = inner.next() {
+                let right = build_ast(inner.next().unwrap());
+                ast = match operator.as_str() {
+                    "^" => AST::PowArcana(Box::new(ast), Box::new(right)),
+                    "**" => AST::PowAether(Box::new(ast), Box::new(right)),
+                    _ => unreachable!(),
+                };
+            }
+
+            ast
+        }
         Rule::term => {
             let mut inner = pair.into_inner();
             let mut ast = build_ast(inner.next().unwrap()); // 最初のfactorを取得
@@ -52,9 +67,17 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
             ast
         }
         Rule::factor => build_ast(pair.into_inner().next().unwrap()),
+        Rule::omen => {
+            let value = pair.as_str().parse().unwrap();
+            AST::Omen(value)
+        }
         Rule::arcana => {
             let value = pair.as_str().parse().unwrap();
             AST::Arcana(value)
+        }
+        Rule::aether => {
+            let value = pair.as_str().parse().unwrap();
+            AST::Aether(value)
         }
         Rule::rune => {
             let value = pair.as_str().trim_matches('"').to_string();
