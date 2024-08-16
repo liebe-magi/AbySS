@@ -3,6 +3,7 @@ use abyss::{
     parser::{build_ast, parse},
 };
 use clap::{Parser, Subcommand};
+use colored::*;
 use std::fs;
 use std::io::{self, Write};
 
@@ -23,7 +24,11 @@ enum Commands {
         script: String,
     },
     /// Start the interactive interpreter
-    Cast,
+    Cast {
+        /// Enable debug mode
+        #[arg(long)]
+        debug: bool,
+    },
 }
 
 fn execute_script(script: &str) {
@@ -47,7 +52,7 @@ fn execute_script(script: &str) {
     }
 }
 
-fn start_interpreter() {
+fn start_interpreter(debug: bool) {
     println!("Starting AbySS interpreter...");
     println!("Type 'exit' or press Ctrl+D to exit the interpreter.");
 
@@ -55,7 +60,7 @@ fn start_interpreter() {
     let mut env = Environment::new();
 
     loop {
-        print!("AbySS> ");
+        print!("{}", "\nAbySS> ".blue().bold());
         io::stdout().flush().unwrap(); // プロンプトを表示
 
         let mut input = String::new();
@@ -86,18 +91,28 @@ fn start_interpreter() {
                     for inner_pair in pair.into_inner() {
                         if inner_pair.as_rule() != abyss::parser::Rule::EOI {
                             let ast = build_ast(inner_pair);
+
+                            // --debug フラグが有効な場合、ASTを表示
+                            if debug {
+                                println!("{}", format!("AST: {:?}", ast).yellow());
+                            }
+
                             match evaluate(&ast, &mut env) {
                                 Ok(result) => match result {
                                     EvalResult::Omen(b) => match b {
-                                        true => println!("boon"),
-                                        false => println!("hex"),
+                                        true => println!("{}", "boon".green()),
+                                        false => println!("{}", "hex".green()),
                                     },
-                                    EvalResult::Arcana(n) => println!("{}", n),
-                                    EvalResult::Aether(n) => println!("{}", n),
-                                    EvalResult::Rune(s) => println!("{}", s),
+                                    EvalResult::Arcana(n) => {
+                                        println!("{}", format!("{}", n).green())
+                                    }
+                                    EvalResult::Aether(n) => {
+                                        println!("{}", format!("{}", n).green())
+                                    }
+                                    EvalResult::Rune(s) => println!("{}", s.green()),
                                     EvalResult::Abyss => {}
                                 },
-                                Err(e) => println!("Error: {}", e),
+                                Err(e) => println!("{}", format!("Error: {}", e).red()),
                             }
                         }
                     }
@@ -108,7 +123,7 @@ fn start_interpreter() {
         }
     }
 
-    println!("Exiting AbySS interpreter...");
+    println!("\nExiting AbySS interpreter...");
 }
 
 fn main() {
@@ -123,9 +138,9 @@ fn main() {
                 eprintln!("Error: Could not read the script file.");
             }
         }
-        Commands::Cast => {
+        Commands::Cast { debug } => {
             // インタープリタモードの開始
-            start_interpreter();
+            start_interpreter(*debug);
         }
     }
 }
