@@ -3,7 +3,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use pest_derive::Parser;
 
-use crate::ast::AST;
+use crate::ast::{Type, AST};
 
 #[derive(Parser)]
 #[grammar = "abyss.pest"] // 文法ファイルを指定
@@ -68,8 +68,12 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
         }
         Rule::factor => build_ast(pair.into_inner().next().unwrap()),
         Rule::omen => {
-            let value = pair.as_str().parse().unwrap();
-            AST::Omen(value)
+            let value = pair.as_str();
+            match value {
+                "boon" => AST::Omen(true),
+                "hex" => AST::Omen(false),
+                _ => panic!("Unknown omen: {}", value),
+            }
         }
         Rule::arcana => {
             let value = pair.as_str().parse().unwrap();
@@ -98,6 +102,38 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
             let inner = pair.into_inner();
             let args = inner.map(build_ast).collect();
             AST::Unveil(args)
+        }
+        Rule::trans_expr => {
+            let mut inner = pair.into_inner();
+            let expr = build_ast(inner.next().unwrap());
+            let target_type = match inner.next().unwrap().as_str() {
+                "arcana" => Type::Arcana,
+                "aether" => Type::Aether,
+                "rune" => Type::Rune,
+                "omen" => Type::Omen,
+                _ => panic!("Unknown type in trans expression"),
+            };
+            AST::Trans(Box::new(expr), target_type)
+        }
+
+        Rule::comp_expr => {
+            let mut inner = pair.into_inner();
+            let left = build_ast(inner.next().unwrap());
+            if let Some(operator_pair) = inner.next() {
+                let operator = operator_pair.as_str().to_string();
+                let right = build_ast(inner.next().unwrap());
+                match operator.as_str() {
+                    "==" => AST::Equal(Box::new(left), Box::new(right)),
+                    "!=" => AST::NotEqual(Box::new(left), Box::new(right)),
+                    "<" => AST::LessThan(Box::new(left), Box::new(right)),
+                    "<=" => AST::LessThanOrEqual(Box::new(left), Box::new(right)),
+                    ">" => AST::GreaterThan(Box::new(left), Box::new(right)),
+                    ">=" => AST::GreaterThanOrEqual(Box::new(left), Box::new(right)),
+                    _ => panic!("Unexpected comparison operator"),
+                }
+            } else {
+                left // 比較演算子がない場合は単純な`power`ノードを返す
+            }
         }
         _ => {
             panic!("Unexpected rule: {:?}", pair.as_rule())

@@ -49,16 +49,25 @@ fn execute_script(script: &str) {
 
 fn start_interpreter() {
     println!("Starting AbySS interpreter...");
+    println!("Type 'exit' or press Ctrl+D to exit the interpreter.");
 
     let mut current_statement = String::new();
     let mut env = Environment::new();
+
     loop {
         print!("AbySS> ");
         io::stdout().flush().unwrap(); // プロンプトを表示
 
         let mut input = String::new();
         input.clear();
-        io::stdin().read_line(&mut input).unwrap(); // 標準入力を受け取る
+        // EOF (Ctrl+D) を検知するために read_line の戻り値を確認
+        let read_result = io::stdin().read_line(&mut input);
+
+        // EOF を検知してインタープリタを終了
+        if let Ok(0) = read_result {
+            println!("");
+            break;
+        }
 
         let trimmed_input = input.trim();
 
@@ -79,7 +88,10 @@ fn start_interpreter() {
                             let ast = build_ast(inner_pair);
                             match evaluate(&ast, &mut env) {
                                 Ok(result) => match result {
-                                    EvalResult::Omen(b) => println!("{}", b),
+                                    EvalResult::Omen(b) => match b {
+                                        true => println!("boon"),
+                                        false => println!("hex"),
+                                    },
                                     EvalResult::Arcana(n) => println!("{}", n),
                                     EvalResult::Aether(n) => println!("{}", n),
                                     EvalResult::Rune(s) => println!("{}", s),
@@ -95,6 +107,7 @@ fn start_interpreter() {
             current_statement.clear();
         }
     }
+
     println!("Exiting AbySS interpreter...");
 }
 

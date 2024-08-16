@@ -1,4 +1,4 @@
-use crate::ast::AST;
+use crate::ast::{Type, AST};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -112,6 +112,56 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 "PowAether operation requires two Aether!".to_string(),
             )),
         },
+        AST::Equal(left, right) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Omen(l == r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => {
+                Ok(EvalResult::Omen((l - r).abs() < std::f64::EPSILON))
+            }
+            (EvalResult::Rune(l), EvalResult::Rune(r)) => Ok(EvalResult::Omen(l == r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Comparison requires compatible types!".to_string(),
+            )),
+        },
+        AST::NotEqual(left, right) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Omen(l != r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => {
+                Ok(EvalResult::Omen((l - r).abs() >= std::f64::EPSILON))
+            }
+            (EvalResult::Rune(l), EvalResult::Rune(r)) => Ok(EvalResult::Omen(l != r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Comparison requires compatible types!".to_string(),
+            )),
+        },
+        AST::LessThan(left, right) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Omen(l < r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Omen(l < r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Comparison requires numeric types!".to_string(),
+            )),
+        },
+        AST::LessThanOrEqual(left, right) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Omen(l <= r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Omen(l <= r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Comparison requires numeric types!".to_string(),
+            )),
+        },
+        AST::GreaterThan(left, right) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Omen(l > r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Omen(l > r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Comparison requires numeric types!".to_string(),
+            )),
+        },
+        AST::GreaterThanOrEqual(left, right) => match (evaluate(left, env)?, evaluate(right, env)?)
+        {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Omen(l >= r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Omen(l >= r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Comparison requires numeric types!".to_string(),
+            )),
+        },
+
         AST::VarAssign(name, value) => {
             let value = match evaluate(value, env)? {
                 EvalResult::Omen(b) => Value::Omen(b),
@@ -142,7 +192,10 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 .collect::<Result<Vec<EvalResult>, EvalError>>()?
                 .iter()
                 .map(|result| match result {
-                    EvalResult::Omen(b) => Ok(b.to_string()),
+                    EvalResult::Omen(b) => match b {
+                        true => Ok("boon".to_string()),
+                        false => Ok("hex".to_string()),
+                    },
                     EvalResult::Arcana(n) => Ok(n.to_string()),
                     EvalResult::Aether(n) => Ok(n.to_string()),
                     EvalResult::Rune(s) => Ok(s.replace("\\n", "\n")),
@@ -152,6 +205,39 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             let output_str = outputs?.join("");
             println!("{}", output_str);
             Ok(EvalResult::Abyss)
+        }
+        AST::Trans(expr, target_type) => {
+            let value = evaluate(expr, env)?;
+            match target_type {
+                Type::Arcana => match value {
+                    EvalResult::Aether(n) => Ok(EvalResult::Arcana(n as i64)),
+                    EvalResult::Rune(s) => s.parse::<i64>().map(EvalResult::Arcana).map_err(|_| {
+                        EvalError::InvalidOperation("Failed to convert Rune to Arcana".to_string())
+                    }),
+                    _ => Err(EvalError::InvalidOperation(
+                        "Invalid cast to Arcana".to_string(),
+                    )),
+                },
+                Type::Aether => match value {
+                    EvalResult::Arcana(n) => Ok(EvalResult::Aether(n as f64)),
+                    EvalResult::Rune(s) => s.parse::<f64>().map(EvalResult::Aether).map_err(|_| {
+                        EvalError::InvalidOperation("Failed to convert Rune to Aether".to_string())
+                    }),
+                    _ => Err(EvalError::InvalidOperation(
+                        "Invalid cast to Aether".to_string(),
+                    )),
+                },
+                Type::Rune => match value {
+                    EvalResult::Arcana(n) => Ok(EvalResult::Rune(n.to_string())),
+                    EvalResult::Aether(n) => Ok(EvalResult::Rune(n.to_string())),
+                    _ => Err(EvalError::InvalidOperation(
+                        "Invalid cast to Rune".to_string(),
+                    )),
+                },
+                Type::Omen => Err(EvalError::InvalidOperation(
+                    "Casting to Omen is not supported".to_string(),
+                )),
+            }
         }
     }
 }

@@ -10,7 +10,22 @@ pub enum AST {
     Divide(Box<AST>, Box<AST>),
     PowArcana(Box<AST>, Box<AST>),
     PowAether(Box<AST>, Box<AST>),
+    Equal(Box<AST>, Box<AST>),
+    NotEqual(Box<AST>, Box<AST>),
+    LessThan(Box<AST>, Box<AST>),
+    LessThanOrEqual(Box<AST>, Box<AST>),
+    GreaterThan(Box<AST>, Box<AST>),
+    GreaterThanOrEqual(Box<AST>, Box<AST>),
     VarAssign(String, Box<AST>),
     Var(String),
     Unveil(Vec<AST>),
+    Trans(Box<AST>, Type),
+}
+
+#[derive(Debug, Clone)]
+pub enum Type {
+    Arcana,
+    Aether,
+    Rune,
+    Omen,
 }

@@ -15,12 +15,14 @@ rune       = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 
 sign = { "+" | "-" }
 
-expression = { trans_expr | power ~ (add_op ~ power)* }
+expression = { trans_expr | comp_expr ~ (add_op ~ comp_expr)* }
 trans_expr = { "trans" ~ "(" ~ expression ~ "as" ~ type ~ ")" }
+comp_expr  = { power ~ (comp_op ~ power)? }
 power      = { term ~ (pow_op ~ term)* }
 term       = { factor ~ (mul_op ~ factor)* }
 factor     = { omen | aether | arcana | rune | identifier | "(" ~ expression ~ ")" }
 
-add_op = { "+" | "-" }
-mul_op = { "*" | "/" }
-pow_op = { "^" | "**" }
+comp_op = { "==" | "!=" | "<=" | "<" | ">=" | ">" }
+add_op  = { "+" | "-" }
+mul_op  = { "*" | "/" }
+pow_op  = { "^" | "**" }
