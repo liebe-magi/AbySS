@@ -2,6 +2,8 @@
 
 # **AbySS: Advanced-scripting by Symbolic Syntax**
 
+![logo](/img/logo_256.png)
+
 AbySS (Advanced-scripting by Symbolic Syntax) is a programming language designed to combine the thrill of casting spells with the power of advanced scripting. AbySS aims to provide an intuitive and symbolically rich syntax that allows developers to interact with their code as if they were performing magic. Whether you're scripting a simple operation or crafting complex systems, AbySS offers a unique and immersive experience.
 
 ## **Key Features**
@@ -93,9 +95,9 @@ AbySS does not use traditional `if` statements. Instead, it uses the `oracle` co
 
 ```abyss
 oracle x {
-  1 => proclaim("One"),
-  2 => proclaim("Two"),
-  _ => proclaim("Something else")
+  1 => unveil("One"),
+  2 => unveil("Two"),
+  _ => unveil("Something else")
 }
 ```
 
