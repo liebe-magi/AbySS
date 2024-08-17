@@ -8,6 +8,7 @@ pub enum AST {
     Subtract(Box<AST>, Box<AST>),
     Multiply(Box<AST>, Box<AST>),
     Divide(Box<AST>, Box<AST>),
+    Modulo(Box<AST>, Box<AST>),
     PowArcana(Box<AST>, Box<AST>),
     PowAether(Box<AST>, Box<AST>),
     Equal(Box<AST>, Box<AST>),
@@ -28,6 +29,7 @@ pub enum AST {
     Assignment {
         name: String,
         value: Box<AST>, // 定義済み変数への代入用ノード
+        op: AssignmentOp,
     },
     Var {
         name: String,
@@ -44,4 +46,16 @@ pub enum Type {
     Aether,
     Rune,
     Omen,
+}
+
+#[derive(Debug, Clone)]
+pub enum AssignmentOp {
+    Assign, // 単純な代入
+    AddAssign,
+    SubAssign,
+    MulAssign,
+    DivAssign,
+    ModAssign,       // 剰余代入を追加
+    PowArcanaAssign, // ^=
+    PowAetherAssign, // **=
 }

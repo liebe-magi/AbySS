@@ -75,7 +75,7 @@ fn test_forge_morph_type_mismatch() {
 }
 
 #[test]
-fn test_forge_morph_reassign() {
+fn test_forge_morph_reassign_arcana() {
     let input = "
         forge morph x: arcana = 42;
         x = 84;
@@ -86,6 +86,44 @@ fn test_forge_morph_reassign() {
             assert_eq!(results.len(), 3);
             match &results[2] {
                 EvalResult::Arcana(n) => assert_eq!(*n, 84),
+                _ => panic!("Expected Arcana result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_forge_morph_reassign_aether() {
+    let input = "
+        forge morph x: aether = 3.14;
+        x = 3.14159;
+        x;
+    ";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 3);
+            match &results[2] {
+                EvalResult::Aether(n) => assert_eq!(*n, 3.14159),
+                _ => panic!("Expected Arcana result"),
+            }
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_forge_morph_reassign_omen() {
+    let input = "
+        forge morph x: omen = boon;
+        x = hex;
+        x;
+    ";
+    match test_base(input) {
+        Ok(results) => {
+            assert_eq!(results.len(), 3);
+            match &results[2] {
+                EvalResult::Omen(b) => assert_eq!(*b, false),
                 _ => panic!("Expected Arcana result"),
             }
         }

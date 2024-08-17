@@ -1,4 +1,4 @@
-use crate::ast::{Type, AST};
+use crate::ast::{AssignmentOp, Type, AST};
 use crate::env::{Environment, Value};
 use std::fmt;
 
@@ -66,6 +66,13 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l / r)),
             _ => Err(EvalError::InvalidOperation(
                 "Divide operation requires either two Arcana or two Aether!".to_string(),
+            )),
+        },
+        AST::Modulo(left, right) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l % r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l % r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Modulo operation requires either two Arcana or two Aether!".to_string(),
             )),
         },
         AST::PowArcana(left, right) => match (evaluate(left, env)?, evaluate(right, env)?) {
@@ -138,10 +145,7 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             let left_result = evaluate(left, env)?;
             let right_result = evaluate(right, env)?;
             match (left_result, right_result) {
-                (EvalResult::Omen(true), EvalResult::Omen(true)) => Ok(EvalResult::Omen(true)),
-                (EvalResult::Omen(true), EvalResult::Omen(false)) => Ok(EvalResult::Omen(false)),
-                (EvalResult::Omen(false), EvalResult::Omen(true)) => Ok(EvalResult::Omen(false)),
-                (EvalResult::Omen(false), EvalResult::Omen(false)) => Ok(EvalResult::Omen(false)),
+                (EvalResult::Omen(l), EvalResult::Omen(r)) => Ok(EvalResult::Omen(l && r)),
                 _ => Err(EvalError::InvalidOperation(
                     "LogicalAnd operation requires two Omen!".to_string(),
                 )),
@@ -151,12 +155,9 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             let left_result = evaluate(left, env)?;
             let right_result = evaluate(right, env)?;
             match (left_result, right_result) {
-                (EvalResult::Omen(true), EvalResult::Omen(true)) => Ok(EvalResult::Omen(true)),
-                (EvalResult::Omen(true), EvalResult::Omen(false)) => Ok(EvalResult::Omen(true)),
-                (EvalResult::Omen(false), EvalResult::Omen(true)) => Ok(EvalResult::Omen(true)),
-                (EvalResult::Omen(false), EvalResult::Omen(false)) => Ok(EvalResult::Omen(false)),
+                (EvalResult::Omen(l), EvalResult::Omen(r)) => Ok(EvalResult::Omen(l || r)),
                 _ => Err(EvalError::InvalidOperation(
-                    "LogicalOr operation requires two Omen!".to_string(),
+                    "LogicalAnd operation requires two Omen!".to_string(),
                 )),
             }
         }
@@ -204,7 +205,7 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             env.set_var(name.clone(), value, var_type.clone(), *is_morph);
             Ok(EvalResult::Abyss)
         }
-        AST::Assignment { name, value } => {
+        AST::Assignment { name, value, op } => {
             let evaluated_value = evaluate(value, env)?;
 
             // 変数が存在するかチェック
@@ -217,22 +218,62 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                     )));
                 }
 
-                // 型が一致しているか確認して変数を更新
-                let result = match (evaluated_value, &var_info.var_type) {
-                    (EvalResult::Omen(b), Type::Omen) => {
-                        env.update_var(name, Value::Omen(b), Type::Omen)
+                let result = match (evaluated_value, &var_info.value, op) {
+                    // Arcana型の処理
+                    (EvalResult::Arcana(v), Value::Arcana(current), op) => {
+                        let new_value = match op {
+                            AssignmentOp::AddAssign => current + v,
+                            AssignmentOp::SubAssign => current - v,
+                            AssignmentOp::MulAssign => current * v,
+                            AssignmentOp::DivAssign => current / v,
+                            AssignmentOp::ModAssign => current % v,
+                            AssignmentOp::PowArcanaAssign => {
+                                if v < 0 {
+                                    return Err(EvalError::NegativeExponent);
+                                }
+                                current.pow(v as u32)
+                            }
+                            AssignmentOp::Assign => v,
+                            _ => {
+                                return Err(EvalError::InvalidOperation(format!(
+                                    "Unsupported operation for variable {}",
+                                    name
+                                )))
+                            }
+                        };
+                        env.update_var(name, Value::Arcana(new_value), Type::Arcana)
                     }
-                    (EvalResult::Arcana(n), Type::Arcana) => {
-                        env.update_var(name, Value::Arcana(n), Type::Arcana)
+
+                    // Aether型の処理
+                    (EvalResult::Aether(v), Value::Aether(current), op) => {
+                        let new_value = match op {
+                            AssignmentOp::AddAssign => current + v,
+                            AssignmentOp::SubAssign => current - v,
+                            AssignmentOp::MulAssign => current * v,
+                            AssignmentOp::DivAssign => current / v,
+                            AssignmentOp::ModAssign => current % v,
+                            AssignmentOp::PowAetherAssign => current.powf(v),
+                            AssignmentOp::Assign => v,
+                            _ => {
+                                return Err(EvalError::InvalidOperation(format!(
+                                    "Unsupported operation for variable {}",
+                                    name
+                                )))
+                            }
+                        };
+                        env.update_var(name, Value::Aether(new_value), Type::Aether)
                     }
-                    (EvalResult::Aether(n), Type::Aether) => {
-                        env.update_var(name, Value::Aether(n), Type::Aether)
+
+                    // Rune型とOmen型の処理
+                    (EvalResult::Rune(v), _, AssignmentOp::Assign) => {
+                        env.update_var(name, Value::Rune(v), Type::Rune)
                     }
-                    (EvalResult::Rune(s), Type::Rune) => {
-                        env.update_var(name, Value::Rune(s), Type::Rune)
+                    (EvalResult::Omen(v), _, AssignmentOp::Assign) => {
+                        env.update_var(name, Value::Omen(v), Type::Omen)
                     }
+
                     _ => Err(EvalError::InvalidOperation(format!(
-                        "Type mismatch: cannot assign to variable {}",
+                        "Type mismatch or unsupported operation for variable {}",
                         name
                     ))),
                 };

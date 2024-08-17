@@ -3,7 +3,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use pest_derive::Parser;
 
-use crate::ast::{Type, AST};
+use crate::ast::{AssignmentOp, Type, AST};
 use crate::env::{SymbolInfo, SymbolTable};
 
 #[derive(Parser)]
@@ -112,6 +112,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> AST {
                 ast = match operator.as_str() {
                     "*" => AST::Multiply(Box::new(ast), Box::new(right)),
                     "/" => AST::Divide(Box::new(ast), Box::new(right)),
+                    "%" => AST::Modulo(Box::new(ast), Box::new(right)),
                     _ => unreachable!(),
                 };
             }
@@ -194,11 +195,23 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> AST {
         Rule::assignment => {
             let mut inner = pair.into_inner();
             let var_name = inner.next().unwrap().as_str().to_string();
+            let op = match inner.next().unwrap().as_str() {
+                "=" => AssignmentOp::Assign,
+                "+=" => AssignmentOp::AddAssign,
+                "-=" => AssignmentOp::SubAssign,
+                "*=" => AssignmentOp::MulAssign,
+                "/=" => AssignmentOp::DivAssign,
+                "%=" => AssignmentOp::ModAssign,
+                "^=" => AssignmentOp::PowArcanaAssign,
+                "**=" => AssignmentOp::PowAetherAssign,
+                _ => panic!("Unexpected assignment operator"),
+            };
             let value = build_ast(inner.next().unwrap(), symbol_table);
 
             AST::Assignment {
                 name: var_name,
                 value: Box::new(value),
+                op, // 新しく追加した演算子情報をセット
             }
         }
         Rule::identifier => {

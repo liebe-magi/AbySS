@@ -4,7 +4,7 @@ statements = { SOI ~ statement* ~ EOI }
 statement  = { (forge_var | assignment | unveil | expression) ~ ";" }
 
 forge_var  = { "forge" ~ morph? ~ identifier ~ ":" ~ type ~ "=" ~ expression }
-assignment = { identifier ~ "=" ~ expression }
+assignment = { identifier ~ assignment_op ~ expression }
 unveil     = { "unveil" ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
 
 identifier = @{ ASCII_ALPHANUMERIC+ }
@@ -28,9 +28,11 @@ mul_expr   = { pow_expr ~ (mul_op ~ pow_expr)* }
 pow_expr   = { factor ~ (pow_op ~ factor)* }
 factor     = { omen | aether | arcana | rune | identifier | "(" ~ expression ~ ")" }
 
+assignment_op = { "+=" | "-=" | "*=" | "/=" | "%=" | "^=" | "**=" | "=" }
+
 comp_op = { "==" | "!=" | "<=" | ">=" | "<" | ">" }
 add_op  = { "+" | "-" }
-mul_op  = { "*" | "/" }
+mul_op  = { "*" | "/" | "%" }
 pow_op  = { "^" | "**" }
 or_op   = { "||" }
 and_op  = { "&&" }
