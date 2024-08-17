@@ -161,7 +161,41 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 "Comparison requires numeric types!".to_string(),
             )),
         },
-
+        AST::LogicalAnd(left, right) => {
+            let left_result = evaluate(left, env)?;
+            let right_result = evaluate(right, env)?;
+            match (left_result, right_result) {
+                (EvalResult::Omen(true), EvalResult::Omen(true)) => Ok(EvalResult::Omen(true)),
+                (EvalResult::Omen(true), EvalResult::Omen(false)) => Ok(EvalResult::Omen(false)),
+                (EvalResult::Omen(false), EvalResult::Omen(true)) => Ok(EvalResult::Omen(false)),
+                (EvalResult::Omen(false), EvalResult::Omen(false)) => Ok(EvalResult::Omen(false)),
+                _ => Err(EvalError::InvalidOperation(
+                    "LogicalAnd operation requires two Omen!".to_string(),
+                )),
+            }
+        }
+        AST::LogicalOr(left, right) => {
+            let left_result = evaluate(left, env)?;
+            let right_result = evaluate(right, env)?;
+            match (left_result, right_result) {
+                (EvalResult::Omen(true), EvalResult::Omen(true)) => Ok(EvalResult::Omen(true)),
+                (EvalResult::Omen(true), EvalResult::Omen(false)) => Ok(EvalResult::Omen(true)),
+                (EvalResult::Omen(false), EvalResult::Omen(true)) => Ok(EvalResult::Omen(true)),
+                (EvalResult::Omen(false), EvalResult::Omen(false)) => Ok(EvalResult::Omen(false)),
+                _ => Err(EvalError::InvalidOperation(
+                    "LogicalOr operation requires two Omen!".to_string(),
+                )),
+            }
+        }
+        AST::LogicalNot(expr) => {
+            let result = evaluate(expr, env)?;
+            match result {
+                EvalResult::Omen(value) => Ok(EvalResult::Omen(!value)),
+                _ => Err(EvalError::InvalidOperation(
+                    "LogicalNot operation requires Omen!".to_string(),
+                )),
+            }
+        }
         AST::VarAssign(name, value) => {
             let value = match evaluate(value, env)? {
                 EvalResult::Omen(b) => Value::Omen(b),

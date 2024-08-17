@@ -19,7 +19,72 @@ pub fn parse(input: &str) -> Result<Pair<Rule>, Error<Rule>> {
 pub fn build_ast(pair: Pair<Rule>) -> AST {
     match pair.as_rule() {
         Rule::statement => build_ast(pair.into_inner().next().unwrap()),
-        Rule::expression => {
+        Rule::expression => build_ast(pair.into_inner().next().unwrap()),
+        Rule::or_expr => {
+            let mut inner = pair.into_inner();
+            let left = build_ast(inner.next().unwrap());
+            if let Some(operator_pair) = inner.next() {
+                let operator = operator_pair.as_str().to_string();
+                let right = build_ast(inner.next().unwrap());
+                match operator.as_str() {
+                    "||" => AST::LogicalOr(Box::new(left), Box::new(right)),
+                    _ => panic!("Unexpected logical operator"),
+                }
+            } else {
+                left // 論理演算子がない場合は単純な`and_expr`ノードを返す
+            }
+        }
+        Rule::and_expr => {
+            let mut inner = pair.into_inner();
+            let left = build_ast(inner.next().unwrap());
+            if let Some(operator_pair) = inner.next() {
+                let operator = operator_pair.as_str().to_string();
+                let right = build_ast(inner.next().unwrap());
+                match operator.as_str() {
+                    "&&" => AST::LogicalAnd(Box::new(left), Box::new(right)),
+                    _ => panic!("Unexpected logical operator"),
+                }
+            } else {
+                left // 論理演算子がない場合は単純な`not_expr`ノードを返す
+            }
+        }
+        Rule::not_expr => {
+            let mut pairs = pair.into_inner();
+
+            // `not_op` が存在するか確認
+            if let Some(first_pair) = pairs.next() {
+                if first_pair.as_rule() == Rule::not_op {
+                    // `!` 演算子が存在する場合
+                    let expr = build_ast(pairs.next().unwrap());
+                    AST::LogicalNot(Box::new(expr))
+                } else {
+                    // `!` がない場合、`comp_expr` をそのまま処理
+                    build_ast(first_pair)
+                }
+            } else {
+                panic!("Expected expression after `not_expr`");
+            }
+        }
+        Rule::comp_expr => {
+            let mut inner = pair.into_inner();
+            let left = build_ast(inner.next().unwrap());
+            if let Some(operator_pair) = inner.next() {
+                let operator = operator_pair.as_str().to_string();
+                let right = build_ast(inner.next().unwrap());
+                match operator.as_str() {
+                    "==" => AST::Equal(Box::new(left), Box::new(right)),
+                    "!=" => AST::NotEqual(Box::new(left), Box::new(right)),
+                    "<" => AST::LessThan(Box::new(left), Box::new(right)),
+                    "<=" => AST::LessThanOrEqual(Box::new(left), Box::new(right)),
+                    ">" => AST::GreaterThan(Box::new(left), Box::new(right)),
+                    ">=" => AST::GreaterThanOrEqual(Box::new(left), Box::new(right)),
+                    _ => panic!("Unexpected comparison operator"),
+                }
+            } else {
+                left // 比較演算子がない場合は単純な`power`ノードを返す
+            }
+        }
+        Rule::add_expr => {
             let mut inner = pair.into_inner();
             let mut ast = build_ast(inner.next().unwrap());
 
@@ -34,22 +99,7 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
 
             ast
         }
-        Rule::power => {
-            let mut inner = pair.into_inner();
-            let mut ast = build_ast(inner.next().unwrap());
-
-            while let Some(operator) = inner.next() {
-                let right = build_ast(inner.next().unwrap());
-                ast = match operator.as_str() {
-                    "^" => AST::PowArcana(Box::new(ast), Box::new(right)),
-                    "**" => AST::PowAether(Box::new(ast), Box::new(right)),
-                    _ => unreachable!(),
-                };
-            }
-
-            ast
-        }
-        Rule::term => {
+        Rule::mul_expr => {
             let mut inner = pair.into_inner();
             let mut ast = build_ast(inner.next().unwrap()); // 最初のfactorを取得
 
@@ -60,6 +110,21 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
                 ast = match operator.as_str() {
                     "*" => AST::Multiply(Box::new(ast), Box::new(right)),
                     "/" => AST::Divide(Box::new(ast), Box::new(right)),
+                    _ => unreachable!(),
+                };
+            }
+
+            ast
+        }
+        Rule::pow_expr => {
+            let mut inner = pair.into_inner();
+            let mut ast = build_ast(inner.next().unwrap());
+
+            while let Some(operator) = inner.next() {
+                let right = build_ast(inner.next().unwrap());
+                ast = match operator.as_str() {
+                    "^" => AST::PowArcana(Box::new(ast), Box::new(right)),
+                    "**" => AST::PowAether(Box::new(ast), Box::new(right)),
                     _ => unreachable!(),
                 };
             }
@@ -114,26 +179,6 @@ pub fn build_ast(pair: Pair<Rule>) -> AST {
                 _ => panic!("Unknown type in trans expression"),
             };
             AST::Trans(Box::new(expr), target_type)
-        }
-
-        Rule::comp_expr => {
-            let mut inner = pair.into_inner();
-            let left = build_ast(inner.next().unwrap());
-            if let Some(operator_pair) = inner.next() {
-                let operator = operator_pair.as_str().to_string();
-                let right = build_ast(inner.next().unwrap());
-                match operator.as_str() {
-                    "==" => AST::Equal(Box::new(left), Box::new(right)),
-                    "!=" => AST::NotEqual(Box::new(left), Box::new(right)),
-                    "<" => AST::LessThan(Box::new(left), Box::new(right)),
-                    "<=" => AST::LessThanOrEqual(Box::new(left), Box::new(right)),
-                    ">" => AST::GreaterThan(Box::new(left), Box::new(right)),
-                    ">=" => AST::GreaterThanOrEqual(Box::new(left), Box::new(right)),
-                    _ => panic!("Unexpected comparison operator"),
-                }
-            } else {
-                left // 比較演算子がない場合は単純な`power`ノードを返す
-            }
         }
         _ => {
             panic!("Unexpected rule: {:?}", pair.as_rule())
