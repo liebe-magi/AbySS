@@ -28,8 +28,7 @@ AbySS (Advanced-scripting by Symbolic Syntax) is a programming language designed
 - [License](#license)
 
 ## **Installation**
-(TBD)
-AbySS installation instructions will be provided as the project matures. For now, you can clone the repository and build it locally.
+You can install AbySS by cloning the repository and building it locally. `cargo-llvm-cov` is supported for test coverage analysis.
 
 ```bash
 git clone https://github.com/your-repository/abyss.git
@@ -37,11 +36,18 @@ cd abyss
 cargo build
 ```
 
+For test coverage with `cargo-llvm-cov`, install the tool as follows:
+
+```bash
+rustup component add llvm-tools-preview
+cargo install cargo-llvm-cov
+```
+
 ## **Getting Started**
-To start using AbySS, you can either enter the interactive interpreter mode or run `.aby` script files. (Work-in-progress)
+To start using AbySS, you can either enter the interactive interpreter mode or run `.aby` script files.
 
 ### **Running the Interpreter**
-You can start the AbySS interpreter (currently under development) by using the following command:
+You can start the AbySS interpreter with the following command:
 
 ```bash
 abyss cast
@@ -71,15 +77,16 @@ AbySS uses a symbolic and intuitive syntax inspired by magical themes. Below are
 ### **Types**
 AbySS supports the following primitive types:
 - **arcana**: Represents integers (e.g., `42`, `-3`).
-- **aether**: Represents floating-point numbers (TBD).
+- **aether**: Represents floating-point numbers (e.g., `3.14`, `-1.0`).
 - **rune**: Represents strings (e.g., `"Hello, World"`).
-- **omen**: Represents boolean values, with `grace` for `true` and `curse` for `false`.
+- **omen**: Represents boolean values, with `boon` for `true` and `hex` for `false`.
 - **abyss**: Represents the `void` type, indicating no value.
 
 ```abyss
 forge x: arcana = 10;
+forge pi: aether = 3.14;
 forge message: rune = "Hello, AbySS";
-forge is_active: omen = grace;
+forge is_active: omen = boon;
 ```
 
 ### **Variable Declaration**
@@ -90,8 +97,15 @@ forge x: arcana = 42;
 forge greeting: rune = "Welcome to AbySS!";
 ```
 
+To declare mutable variables, use the `morph` keyword with `forge`.
+
+```abyss
+forge morph counter: arcana = 10;
+counter += 5;
+```
+
 ### **Conditionals**
-AbySS does not use traditional `if` statements. Instead, it uses the `oracle` construct, inspired by match statements in other languages. (Work-in-progress)
+AbySS uses the `oracle` construct, inspired by match statements in other languages, to handle conditionals. (Work-in-progress)
 
 ```abyss
 oracle x {
@@ -151,7 +165,6 @@ greet("AbySS");
 
 ## **Roadmap**
 - **Interpreter Improvements**: Enhance the interpreter for better real-time feedback (Work-in-progress).
-- **Type System Expansion**: Implement additional types like `aether` (Work-in-progress).
 - **File I/O**: Introduce input functionality and file handling (TBD).
 - **Standard Library**: Develop a standard library with common functions and utilities (TBD).
 - **Error Handling**: Implement robust error handling (TBD).
