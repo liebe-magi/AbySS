@@ -1,5 +1,6 @@
 use abyss::{
-    eval::{evaluate, Environment, EvalResult},
+    env::{Environment, SymbolTable},
+    eval::{evaluate, EvalResult},
     parser::{build_ast, parse},
 };
 use clap::{Parser, Subcommand};
@@ -33,6 +34,7 @@ enum Commands {
 
 fn execute_script(script: &str) {
     // 環境を初期化
+    let mut st = SymbolTable::new();
     let mut env = Environment::new();
 
     // スクリプトをパースして評価
@@ -40,7 +42,7 @@ fn execute_script(script: &str) {
         Ok(pair) => {
             for inner_pair in pair.into_inner() {
                 if inner_pair.as_rule() != abyss::parser::Rule::EOI {
-                    let ast = build_ast(inner_pair);
+                    let ast = build_ast(inner_pair, &mut st);
                     match evaluate(&ast, &mut env) {
                         Ok(_) => {}
                         Err(e) => panic!("Error: {}", e),
@@ -57,6 +59,7 @@ fn start_interpreter(debug: bool) {
     println!("Type 'exit' or press Ctrl+D to exit the interpreter.");
 
     let mut current_statement = String::new();
+    let mut st = SymbolTable::new();
     let mut env = Environment::new();
 
     loop {
@@ -90,7 +93,7 @@ fn start_interpreter(debug: bool) {
                 Ok(pair) => {
                     for inner_pair in pair.into_inner() {
                         if inner_pair.as_rule() != abyss::parser::Rule::EOI {
-                            let ast = build_ast(inner_pair);
+                            let ast = build_ast(inner_pair, &mut st);
 
                             // --debug フラグが有効な場合、ASTを表示
                             if debug {

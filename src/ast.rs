@@ -19,13 +19,26 @@ pub enum AST {
     LogicalAnd(Box<AST>, Box<AST>),
     LogicalOr(Box<AST>, Box<AST>),
     LogicalNot(Box<AST>),
-    VarAssign(String, Box<AST>),
-    Var(String),
+    VarAssign {
+        name: String,
+        value: Box<AST>,
+        var_type: Type,
+        is_morph: bool,
+    },
+    Assignment {
+        name: String,
+        value: Box<AST>, // 定義済み変数への代入用ノード
+    },
+    Var {
+        name: String,
+        var_type: Type,
+        is_morph: bool,
+    },
     Unveil(Vec<AST>),
     Trans(Box<AST>, Type),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Arcana,
     Aether,

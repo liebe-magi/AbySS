@@ -1,10 +1,11 @@
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
 
 statements = { SOI ~ statement* ~ EOI }
-statement  = { (forge_var | unveil | expression) ~ ";" }
+statement  = { (forge_var | assignment | unveil | expression) ~ ";" }
 
-forge_var = { "forge" ~ identifier ~ ":" ~ type ~ "=" ~ expression }
-unveil    = { "unveil" ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
+forge_var  = { "forge" ~ morph? ~ identifier ~ ":" ~ type ~ "=" ~ expression }
+assignment = { identifier ~ "=" ~ expression }
+unveil     = { "unveil" ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
 
 identifier = @{ ASCII_ALPHANUMERIC+ }
 type       =  { "omen" | "aether" | "arcana" | "rune" }
@@ -13,7 +14,8 @@ aether     = @{ sign? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 arcana     = @{ sign? ~ ASCII_DIGIT+ }
 rune       = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 
-sign = { "+" | "-" }
+sign  = { "+" | "-" }
+morph = { "morph" }
 
 expression = { trans_expr | or_expr }
 trans_expr = { "trans" ~ "(" ~ expression ~ "as" ~ type ~ ")" }
@@ -26,7 +28,7 @@ mul_expr   = { pow_expr ~ (mul_op ~ pow_expr)* }
 pow_expr   = { factor ~ (pow_op ~ factor)* }
 factor     = { omen | aether | arcana | rune | identifier | "(" ~ expression ~ ")" }
 
-comp_op = { "==" | "!=" | "<=" | "<" | ">=" | ">" }
+comp_op = { "==" | "!=" | "<=" | ">=" | "<" | ">" }
 add_op  = { "+" | "-" }
 mul_op  = { "*" | "/" }
 pow_op  = { "^" | "**" }

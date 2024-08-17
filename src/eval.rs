@@ -1,5 +1,5 @@
 use crate::ast::{Type, AST};
-use std::collections::HashMap;
+use crate::env::{Environment, Value};
 use std::fmt;
 
 pub enum EvalResult {
@@ -30,33 +30,6 @@ impl fmt::Display for EvalError {
 }
 
 impl std::error::Error for EvalError {}
-
-pub enum Value {
-    Omen(bool),
-    Arcana(i64),
-    Aether(f64),
-    Rune(String),
-}
-
-pub struct Environment {
-    vars: HashMap<String, Value>,
-}
-
-impl Environment {
-    pub fn new() -> Self {
-        Environment {
-            vars: HashMap::new(),
-        }
-    }
-
-    pub fn set_var(&mut self, name: String, value: Value) {
-        self.vars.insert(name, value);
-    }
-
-    pub fn get_var(&self, name: &str) -> Option<&Value> {
-        self.vars.get(name)
-    }
-}
 
 pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalError> {
     match ast {
@@ -196,12 +169,31 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 )),
             }
         }
-        AST::VarAssign(name, value) => {
+        AST::VarAssign {
+            name,
+            value,
+            var_type,
+            is_morph,
+        } => {
             let value = match evaluate(value, env)? {
-                EvalResult::Omen(b) => Value::Omen(b),
-                EvalResult::Arcana(n) => Value::Arcana(n),
-                EvalResult::Aether(n) => Value::Aether(n),
-                EvalResult::Rune(s) => Value::Rune(s),
+                EvalResult::Omen(b) if *var_type == Type::Omen => Value::Omen(b),
+                EvalResult::Arcana(n) if *var_type == Type::Arcana => Value::Arcana(n),
+                EvalResult::Aether(n) if *var_type == Type::Aether => Value::Aether(n),
+                EvalResult::Rune(s) if *var_type == Type::Rune => Value::Rune(s),
+                EvalResult::Omen(_)
+                | EvalResult::Arcana(_)
+                | EvalResult::Aether(_)
+                | EvalResult::Rune(_) => {
+                    return Err(EvalError::InvalidOperation(format!(
+                        "VarAssign operation requires {}!",
+                        match *var_type {
+                            Type::Omen => "Omen",
+                            Type::Arcana => "Arcana",
+                            Type::Aether => "Aether",
+                            Type::Rune => "Rune",
+                        }
+                    )));
+                }
                 _ => {
                     return Err(EvalError::InvalidOperation(
                         "VarAssign operation requires either Omen, Arcana, Aether, or Rune!"
@@ -209,14 +201,66 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                     ))
                 }
             };
-            env.set_var(name.clone(), value);
+            env.set_var(name.clone(), value, var_type.clone(), *is_morph);
             Ok(EvalResult::Abyss)
         }
-        AST::Var(name) => match env.get_var(name) {
-            Some(Value::Omen(b)) => Ok(EvalResult::Omen(*b)),
-            Some(Value::Arcana(n)) => Ok(EvalResult::Arcana(*n)),
-            Some(Value::Aether(n)) => Ok(EvalResult::Aether(*n)),
-            Some(Value::Rune(s)) => Ok(EvalResult::Rune(s.clone())),
+        AST::Assignment { name, value } => {
+            let evaluated_value = evaluate(value, env)?;
+
+            // 変数が存在するかチェック
+            if let Some(var_info) = env.get_var(name) {
+                // is_morph でない場合はエラーを返す
+                if !var_info.is_morph {
+                    return Err(EvalError::InvalidOperation(format!(
+                        "Cannot reassign to immutable variable {}",
+                        name
+                    )));
+                }
+
+                // 型が一致しているか確認して変数を更新
+                let result = match (evaluated_value, &var_info.var_type) {
+                    (EvalResult::Omen(b), Type::Omen) => {
+                        env.update_var(name, Value::Omen(b), Type::Omen)
+                    }
+                    (EvalResult::Arcana(n), Type::Arcana) => {
+                        env.update_var(name, Value::Arcana(n), Type::Arcana)
+                    }
+                    (EvalResult::Aether(n), Type::Aether) => {
+                        env.update_var(name, Value::Aether(n), Type::Aether)
+                    }
+                    (EvalResult::Rune(s), Type::Rune) => {
+                        env.update_var(name, Value::Rune(s), Type::Rune)
+                    }
+                    _ => Err(EvalError::InvalidOperation(format!(
+                        "Type mismatch: cannot assign to variable {}",
+                        name
+                    ))),
+                };
+
+                // update_var が成功した場合、Ok(EvalResult::Abyss) を返す
+                result.map(|_| EvalResult::Abyss)
+            } else {
+                Err(EvalError::UndefinedVariable(name.clone()))
+            }
+        }
+        AST::Var { name, var_type, .. } => match env.get_var(name) {
+            Some(var_info) => {
+                // 型が一致しているか確認
+                if var_info.var_type != *var_type {
+                    return Err(EvalError::InvalidOperation(format!(
+                        "Type mismatch: variable {} is of type {:?}, but {:?} was expected",
+                        name, var_info.var_type, var_type
+                    )));
+                }
+
+                // 変数の値を評価結果として返す
+                match &var_info.value {
+                    Value::Omen(b) => Ok(EvalResult::Omen(*b)),
+                    Value::Arcana(n) => Ok(EvalResult::Arcana(*n)),
+                    Value::Aether(n) => Ok(EvalResult::Aether(*n)),
+                    Value::Rune(s) => Ok(EvalResult::Rune(s.clone())),
+                }
+            }
             None => Err(EvalError::UndefinedVariable(name.clone())),
         },
         AST::Unveil(args) => {
