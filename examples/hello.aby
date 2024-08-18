@@ -1,5 +1,10 @@
+// This is a single line comment
 forge hello: rune = "Hello World from AbySS!";
 unveil(hello, "\n");
+
+/*
+This is a block comment
+*/
 
 unveil("Calc test");
 unveil("1 + 2 + 3 = ", 1 + 2 + 3);
