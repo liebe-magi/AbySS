@@ -5,8 +5,13 @@ use abyss_lang::{
 };
 use clap::{Parser, Subcommand};
 use colored::*;
+use dirs;
+use rustyline::config::Configurer;
+use rustyline::error::ReadlineError;
+use rustyline::history::FileHistory;
+use rustyline::Editor;
 use std::fs;
-use std::io::{self, Write};
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "abyss")]
@@ -30,6 +35,22 @@ enum Commands {
         #[arg(long)]
         debug: bool,
     },
+}
+
+fn setup_abyss_directory() -> PathBuf {
+    let home_dir = dirs::home_dir().expect("Unable to find home directory");
+    let abyss_dir = home_dir.join(".abyss");
+
+    if !abyss_dir.exists() {
+        fs::create_dir_all(&abyss_dir).expect("Unable to create ~/.abyss directory");
+    }
+
+    abyss_dir
+}
+
+fn get_history_file_path() -> PathBuf {
+    let abyss_dir = setup_abyss_directory();
+    abyss_dir.join("abyss_history.log")
 }
 
 fn execute_script(script: &str) {
@@ -78,86 +99,89 @@ fn start_interpreter(debug: bool) {
     let mut st = SymbolTable::new();
     let mut env = Environment::new();
 
+    // rustylineのEditorを作成し、履歴を有効化
+    let history_path = get_history_file_path();
+    let mut rl = Editor::<(), FileHistory>::new().expect("Error: Failed to create editor");
+    let _ = rl.load_history(&history_path);
+    let _ = rl.set_max_history_size(1000);
+
     loop {
-        print!("{}", "\nAbySS> ".blue().bold());
-        io::stdout().flush().unwrap(); // プロンプトを表示
+        let readline = rl.readline(&"\nAbySS> ".blue().bold().to_string());
 
-        let mut input = String::new();
-        input.clear();
-        // EOF (Ctrl+D) を検知するために read_line の戻り値を確認
-        let read_result = io::stdin().read_line(&mut input);
+        match readline {
+            Ok(line) => {
+                if line.trim() == "exit" {
+                    break; // "exit" が入力されたらインタープリタ終了
+                }
 
-        // EOF を検知してインタープリタを終了
-        if let Ok(0) = read_result {
-            println!("");
-            break;
-        }
+                match rl.add_history_entry(line.as_str()) {
+                    Ok(_) => {} // 正常に履歴が追加された場合は何もしない
+                    Err(err) => println!("Failed to add history: {:?}", err), // エラーが発生した場合にエラーメッセージを表示
+                }
 
-        let trimmed_input = input.trim();
+                // 文を結合
+                current_statement.push_str(&line);
 
-        if trimmed_input == "exit" {
-            break; // "exit" が入力されたらインタープリタ終了
-        }
-
-        // 文を結合
-        current_statement.push_str(trimmed_input);
-
-        // 文の末尾がセミコロンで終わっているかチェック
-        if current_statement.ends_with(';') {
-            // セミコロンで終わっていれば、文をパースして評価
-            match parse(&current_statement) {
-                Ok(pair) => {
-                    for inner_pair in pair.into_inner() {
-                        if inner_pair.as_rule() != Rule::EOI {
-                            match build_ast(inner_pair, &mut st) {
-                                Ok(ast) => {
-                                    // --debug フラグが有効な場合、ASTを表示
-                                    if debug {
-                                        println!("{}", format!("AST: {:?}", ast).yellow());
-                                    }
-
-                                    match evaluate(&ast, &mut env) {
-                                        Ok(result) => match result {
-                                            EvalResult::Omen(b) => match b {
-                                                true => println!("{}", "boon".green()),
-                                                false => println!("{}", "hex".green()),
-                                            },
-                                            EvalResult::Arcana(n) => {
-                                                println!("{}", format!("{}", n).green())
+                // 文の末尾がセミコロンで終わっていれば、文をパースして評価
+                if current_statement.ends_with(';') {
+                    match parse(&current_statement) {
+                        Ok(pair) => {
+                            for inner_pair in pair.into_inner() {
+                                if inner_pair.as_rule() != Rule::EOI {
+                                    match build_ast(inner_pair, &mut st) {
+                                        Ok(ast) => {
+                                            if debug {
+                                                println!("{}", format!("AST: {:?}", ast).yellow());
                                             }
-                                            EvalResult::Aether(n) => {
-                                                println!("{}", format!("{}", n).green())
-                                            }
-                                            EvalResult::Rune(s) => println!("{}", s.green()),
-                                            EvalResult::Abyss => {}
-                                        },
-                                        Err(e) => {
-                                            let error_message = e.to_string();
-                                            match e {
-                                                EvalError::UndefinedVariable(_, line_info)
-                                                | EvalError::InvalidOperation(_, line_info)
-                                                | EvalError::NegativeExponent(line_info) => {
-                                                    display_error_with_source(
-                                                        &current_statement,
-                                                        line_info,
-                                                        &error_message,
-                                                    );
+                                            match evaluate(&ast, &mut env) {
+                                                Ok(result) => match result {
+                                                    EvalResult::Omen(b) => match b {
+                                                        true => println!("{}", "boon".green()),
+                                                        false => println!("{}", "hex".green()),
+                                                    },
+                                                    EvalResult::Arcana(n) => {
+                                                        println!("{}", format!("{}", n).green())
+                                                    }
+                                                    EvalResult::Aether(n) => {
+                                                        println!("{}", format!("{}", n).green())
+                                                    }
+                                                    EvalResult::Rune(s) => {
+                                                        println!("{}", s.green())
+                                                    }
+                                                    EvalResult::Abyss => {}
+                                                },
+                                                Err(e) => {
+                                                    println!("{}", format!("Error: {}", e).red())
                                                 }
                                             }
                                         }
+                                        Err(e) => println!("{}", format!("Error: {}", e).red()),
                                     }
                                 }
-                                Err(e) => println!("{}", format!("Error: {}", e).red()),
                             }
                         }
+                        Err(e) => println!("{}", format!("Error: {}", e).red()),
                     }
+                    current_statement.clear();
                 }
-                Err(e) => println!("{}", format!("Error: {}", e).red()),
             }
-            current_statement.clear();
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            }
         }
     }
 
+    rl.save_history(&history_path)
+        .expect("Error: Failed to save history");
     println!("\nExiting AbySS interpreter...");
 }
 
