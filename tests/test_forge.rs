@@ -67,7 +67,7 @@ fn test_forge_morph_type_mismatch() {
     ";
     match test_base(input) {
         Err(e) => match e.downcast_ref::<EvalError>() {
-            Some(EvalError::InvalidOperation(_)) => {}
+            Some(EvalError::InvalidOperation(_, _)) => {}
             _ => panic!("Expected an invalid operation error for type mismatch"),
         },
         Ok(_) => panic!("Expected an error for type mismatch with morph variable"),
@@ -139,7 +139,7 @@ fn test_forge_reassign_immutable() {
     ";
     match test_base(input) {
         Err(e) => match e.downcast_ref::<EvalError>() {
-            Some(EvalError::InvalidOperation(_)) => {}
+            Some(EvalError::InvalidOperation(_, _)) => {}
             _ => panic!("Expected an invalid operation error for reassigning immutable variable"),
         },
         Ok(_) => panic!("Expected an error for reassigning immutable variable"),
@@ -154,7 +154,7 @@ fn test_forge_reassign_different_type() {
     ";
     match test_base(input) {
         Err(e) => match e.downcast_ref::<EvalError>() {
-            Some(EvalError::InvalidOperation(_)) => {}
+            Some(EvalError::InvalidOperation(_, _)) => {}
             _ => panic!("Expected an invalid operation error for type mismatch"),
         },
         Ok(_) => panic!("Expected an error for type mismatch"),

@@ -3,7 +3,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use pest_derive::Parser;
 
-use crate::ast::{AssignmentOp, Type, AST};
+use crate::ast::{AssignmentOp, LineInfo, Type, AST};
 use crate::env::{SymbolInfo, SymbolTable};
 
 #[derive(Parser)]
@@ -18,6 +18,8 @@ pub fn parse(input: &str) -> Result<Pair<Rule>, Error<Rule>> {
 }
 
 pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST, Error<Rule>> {
+    let line_info = Some(LineInfo::from_span(&pair.as_span())); // 行・列情報を取得
+
     match pair.as_rule() {
         Rule::statement => build_ast(pair.into_inner().next().unwrap(), symbol_table),
         Rule::expression => build_ast(pair.into_inner().next().unwrap(), symbol_table),
@@ -25,10 +27,9 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             let mut inner = pair.into_inner();
             let left = build_ast(inner.next().unwrap(), symbol_table)?;
             if let Some(operator_pair) = inner.next() {
-                let operator = operator_pair.as_str().to_string();
                 let right = build_ast(inner.next().unwrap(), symbol_table)?;
-                match operator.as_str() {
-                    "||" => Ok(AST::LogicalOr(Box::new(left), Box::new(right))),
+                match operator_pair.as_str() {
+                    "||" => Ok(AST::LogicalOr(Box::new(left), Box::new(right), line_info)),
                     _ => Err(Error::new_from_span(
                         ErrorVariant::CustomError {
                             message: "Unexpected logical operator".to_string(),
@@ -44,10 +45,9 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             let mut inner = pair.into_inner();
             let left = build_ast(inner.next().unwrap(), symbol_table)?;
             if let Some(operator_pair) = inner.next() {
-                let operator = operator_pair.as_str().to_string();
                 let right = build_ast(inner.next().unwrap(), symbol_table)?;
-                match operator.as_str() {
-                    "&&" => Ok(AST::LogicalAnd(Box::new(left), Box::new(right))),
+                match operator_pair.as_str() {
+                    "&&" => Ok(AST::LogicalAnd(Box::new(left), Box::new(right), line_info)),
                     _ => Err(Error::new_from_span(
                         ErrorVariant::CustomError {
                             message: "Unexpected logical operator".to_string(),
@@ -72,7 +72,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             let expr = build_ast(inner.next().unwrap(), symbol_table)?;
 
             if exist_not_op {
-                Ok(AST::LogicalNot(Box::new(expr)))
+                Ok(AST::LogicalNot(Box::new(expr), line_info))
             } else {
                 Ok(expr) // `not_op` が存在しない場合は単純な`comp_expr`ノードを返す
             }
@@ -81,15 +81,22 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             let mut inner = pair.into_inner();
             let left = build_ast(inner.next().unwrap(), symbol_table)?;
             if let Some(operator_pair) = inner.next() {
-                let operator = operator_pair.as_str().to_string();
                 let right = build_ast(inner.next().unwrap(), symbol_table)?;
-                match operator.as_str() {
-                    "==" => Ok(AST::Equal(Box::new(left), Box::new(right))),
-                    "!=" => Ok(AST::NotEqual(Box::new(left), Box::new(right))),
-                    "<" => Ok(AST::LessThan(Box::new(left), Box::new(right))),
-                    "<=" => Ok(AST::LessThanOrEqual(Box::new(left), Box::new(right))),
-                    ">" => Ok(AST::GreaterThan(Box::new(left), Box::new(right))),
-                    ">=" => Ok(AST::GreaterThanOrEqual(Box::new(left), Box::new(right))),
+                match operator_pair.as_str() {
+                    "==" => Ok(AST::Equal(Box::new(left), Box::new(right), line_info)),
+                    "!=" => Ok(AST::NotEqual(Box::new(left), Box::new(right), line_info)),
+                    "<" => Ok(AST::LessThan(Box::new(left), Box::new(right), line_info)),
+                    "<=" => Ok(AST::LessThanOrEqual(
+                        Box::new(left),
+                        Box::new(right),
+                        line_info,
+                    )),
+                    ">" => Ok(AST::GreaterThan(Box::new(left), Box::new(right), line_info)),
+                    ">=" => Ok(AST::GreaterThanOrEqual(
+                        Box::new(left),
+                        Box::new(right),
+                        line_info,
+                    )),
                     _ => Err(Error::new_from_span(
                         ErrorVariant::CustomError {
                             message: "Unexpected comparison operator".to_string(),
@@ -108,8 +115,8 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             while let Some(operator_pair) = inner.next() {
                 let right = build_ast(inner.next().unwrap(), symbol_table)?;
                 ast = match operator_pair.as_str() {
-                    "+" => AST::Add(Box::new(ast), Box::new(right)),
-                    "-" => AST::Subtract(Box::new(ast), Box::new(right)),
+                    "+" => AST::Add(Box::new(ast), Box::new(right), line_info.clone()),
+                    "-" => AST::Subtract(Box::new(ast), Box::new(right), line_info.clone()),
                     _ => {
                         return Err(Error::new_from_span(
                             ErrorVariant::CustomError {
@@ -129,9 +136,9 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             while let Some(operator_pair) = inner.next() {
                 let right = build_ast(inner.next().unwrap(), symbol_table)?;
                 ast = match operator_pair.as_str() {
-                    "*" => AST::Multiply(Box::new(ast), Box::new(right)),
-                    "/" => AST::Divide(Box::new(ast), Box::new(right)),
-                    "%" => AST::Modulo(Box::new(ast), Box::new(right)),
+                    "*" => AST::Multiply(Box::new(ast), Box::new(right), line_info.clone()),
+                    "/" => AST::Divide(Box::new(ast), Box::new(right), line_info.clone()),
+                    "%" => AST::Modulo(Box::new(ast), Box::new(right), line_info.clone()),
                     _ => {
                         return Err(Error::new_from_span(
                             ErrorVariant::CustomError {
@@ -151,8 +158,8 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             while let Some(operator_pair) = inner.next() {
                 let right = build_ast(inner.next().unwrap(), symbol_table)?;
                 ast = match operator_pair.as_str() {
-                    "^" => AST::PowArcana(Box::new(ast), Box::new(right)),
-                    "**" => AST::PowAether(Box::new(ast), Box::new(right)),
+                    "^" => AST::PowArcana(Box::new(ast), Box::new(right), line_info.clone()),
+                    "**" => AST::PowAether(Box::new(ast), Box::new(right), line_info.clone()),
                     _ => {
                         return Err(Error::new_from_span(
                             ErrorVariant::CustomError {
@@ -169,8 +176,8 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         Rule::omen => {
             let value = pair.as_str();
             match value {
-                "boon" => Ok(AST::Omen(true)),
-                "hex" => Ok(AST::Omen(false)),
+                "boon" => Ok(AST::Omen(true, line_info)),
+                "hex" => Ok(AST::Omen(false, line_info)),
                 _ => Err(Error::new_from_span(
                     ErrorVariant::CustomError {
                         message: "Unknown omen value".to_string(),
@@ -181,15 +188,15 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         }
         Rule::arcana => {
             let value = pair.as_str().parse().unwrap();
-            Ok(AST::Arcana(value))
+            Ok(AST::Arcana(value, line_info))
         }
         Rule::aether => {
             let value = pair.as_str().parse().unwrap();
-            Ok(AST::Aether(value))
+            Ok(AST::Aether(value, line_info))
         }
         Rule::rune => {
             let value = pair.as_str().trim_matches('"').to_string();
-            Ok(AST::Rune(value))
+            Ok(AST::Rune(value, line_info))
         }
         Rule::forge_var => {
             let span = pair.as_span(); // `pair`の`span`を取得して保持しておく
@@ -231,9 +238,11 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                 value: Box::new(value),
                 var_type,
                 is_morph,
+                line_info,
             })
         }
         Rule::assignment => {
+            let span = pair.as_span();
             let mut inner = pair.into_inner();
             let var_name = inner.next().unwrap().as_str().to_string();
             let op = match inner.next().unwrap().as_str() {
@@ -249,7 +258,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                     ErrorVariant::CustomError {
                         message: "Unexpected assignment operator".to_string(),
                     },
-                    inner.next().unwrap().as_span(),
+                    span,
                 ))?,
             };
             let value = build_ast(inner.next().unwrap(), symbol_table)?;
@@ -258,6 +267,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                 name: var_name,
                 value: Box::new(value),
                 op,
+                line_info,
             })
         }
         Rule::identifier => {
@@ -267,6 +277,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                     name: var_name,
                     var_type: symbol_info.var_type.clone(),
                     is_morph: symbol_info.is_morph,
+                    line_info,
                 })
             } else {
                 Err(Error::new_from_span(
@@ -281,7 +292,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             let inner = pair.into_inner();
             let args: Result<Vec<AST>, Error<Rule>> =
                 inner.map(|p| build_ast(p, symbol_table)).collect();
-            Ok(AST::Unveil(args?))
+            Ok(AST::Unveil(args?, line_info))
         }
         Rule::trans_expr => {
             let span = pair.as_span(); // `pair`の`span`を取得して保持しておく
@@ -299,7 +310,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                     span, // ここで保持していた`span`を使う
                 ))?,
             };
-            Ok(AST::Trans(Box::new(expr), target_type))
+            Ok(AST::Trans(Box::new(expr), target_type, line_info))
         }
         _ => Err(Error::new_from_span(
             ErrorVariant::CustomError {

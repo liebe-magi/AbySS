@@ -384,7 +384,7 @@ fn test_arcana_exponentiation_negative_exponent_error() {
     let input = "4 ^ -2;";
     match test_base(input) {
         Err(e) => match e.downcast_ref::<EvalError>() {
-            Some(EvalError::NegativeExponent) => {}
+            Some(EvalError::NegativeExponent(_line_info)) => {}
             _ => panic!("Expected a negative exponent error"),
         },
         Ok(_) => panic!("Expected an error for negative exponent with arcana"),

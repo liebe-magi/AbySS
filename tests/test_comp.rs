@@ -134,7 +134,7 @@ fn test_rune_comparison_less_than_should_error() {
     let input = "\"apple\" < \"banana\";";
     match test_base(input) {
         Err(e) => match e.downcast_ref::<EvalError>() {
-            Some(EvalError::InvalidOperation(_)) => {}
+            Some(EvalError::InvalidOperation(_, _)) => {}
             _ => panic!("Expected an invalid operation error for < with Rune"),
         },
         Ok(_) => panic!("Expected an error for < operation with Rune"),
@@ -146,7 +146,7 @@ fn test_rune_comparison_greater_than_should_error() {
     let input = "\"banana\" > \"apple\";";
     match test_base(input) {
         Err(e) => match e.downcast_ref::<EvalError>() {
-            Some(EvalError::InvalidOperation(_)) => {}
+            Some(EvalError::InvalidOperation(_, _)) => {}
             _ => panic!("Expected an invalid operation error for > with Rune"),
         },
         Ok(_) => panic!("Expected an error for > operation with Rune"),
@@ -158,7 +158,7 @@ fn test_rune_comparison_less_than_or_equal_should_error() {
     let input = "\"apple\" <= \"apple\";";
     match test_base(input) {
         Err(e) => match e.downcast_ref::<EvalError>() {
-            Some(EvalError::InvalidOperation(_)) => {}
+            Some(EvalError::InvalidOperation(_, _)) => {}
             _ => panic!("Expected an invalid operation error for <= with Rune"),
         },
         Ok(_) => panic!("Expected an error for <= operation with Rune"),
@@ -170,7 +170,7 @@ fn test_rune_comparison_greater_than_or_equal_should_error() {
     let input = "\"banana\" >= \"apple\";";
     match test_base(input) {
         Err(e) => match e.downcast_ref::<EvalError>() {
-            Some(EvalError::InvalidOperation(_)) => {}
+            Some(EvalError::InvalidOperation(_, _)) => {}
             _ => panic!("Expected an invalid operation error for >= with Rune"),
         },
         Ok(_) => panic!("Expected an error for >= operation with Rune"),
