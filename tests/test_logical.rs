@@ -1,6 +1,6 @@
 mod test_base;
 
-use abyss::eval::EvalResult;
+use abyss_lang::eval::EvalResult;
 use test_base::test_base;
 
 #[test]

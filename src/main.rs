@@ -1,7 +1,7 @@
-use abyss::{
+use abyss_lang::{
     env::{Environment, SymbolTable},
     eval::{evaluate, EvalResult},
-    parser::{build_ast, parse},
+    parser::{build_ast, parse, Rule},
 };
 use clap::{Parser, Subcommand};
 use colored::*;
@@ -41,7 +41,7 @@ fn execute_script(script: &str) {
     match parse(script) {
         Ok(pair) => {
             for inner_pair in pair.into_inner() {
-                if inner_pair.as_rule() != abyss::parser::Rule::EOI {
+                if inner_pair.as_rule() != Rule::EOI {
                     let ast = build_ast(inner_pair, &mut st);
                     match evaluate(&ast, &mut env) {
                         Ok(_) => {}
@@ -92,7 +92,7 @@ fn start_interpreter(debug: bool) {
             match parse(&current_statement) {
                 Ok(pair) => {
                     for inner_pair in pair.into_inner() {
-                        if inner_pair.as_rule() != abyss::parser::Rule::EOI {
+                        if inner_pair.as_rule() != Rule::EOI {
                             let ast = build_ast(inner_pair, &mut st);
 
                             // --debug フラグが有効な場合、ASTを表示

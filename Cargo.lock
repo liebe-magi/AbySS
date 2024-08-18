@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "abyss"
+name = "abyss-lang"
 version = "0.0.1"
 dependencies = [
  "clap",
