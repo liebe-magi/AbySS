@@ -42,9 +42,11 @@ fn execute_script(script: &str) {
         Ok(pair) => {
             for inner_pair in pair.into_inner() {
                 if inner_pair.as_rule() != Rule::EOI {
-                    let ast = build_ast(inner_pair, &mut st);
-                    match evaluate(&ast, &mut env) {
-                        Ok(_) => {}
+                    match build_ast(inner_pair, &mut st) {
+                        Ok(ast) => match evaluate(&ast, &mut env) {
+                            Ok(_) => {}
+                            Err(e) => panic!("Error: {}", e),
+                        },
                         Err(e) => panic!("Error: {}", e),
                     }
                 }
@@ -93,34 +95,37 @@ fn start_interpreter(debug: bool) {
                 Ok(pair) => {
                     for inner_pair in pair.into_inner() {
                         if inner_pair.as_rule() != Rule::EOI {
-                            let ast = build_ast(inner_pair, &mut st);
-
-                            // --debug フラグが有効な場合、ASTを表示
-                            if debug {
-                                println!("{}", format!("AST: {:?}", ast).yellow());
-                            }
-
-                            match evaluate(&ast, &mut env) {
-                                Ok(result) => match result {
-                                    EvalResult::Omen(b) => match b {
-                                        true => println!("{}", "boon".green()),
-                                        false => println!("{}", "hex".green()),
-                                    },
-                                    EvalResult::Arcana(n) => {
-                                        println!("{}", format!("{}", n).green())
+                            match build_ast(inner_pair, &mut st) {
+                                Ok(ast) => {
+                                    // --debug フラグが有効な場合、ASTを表示
+                                    if debug {
+                                        println!("{}", format!("AST: {:?}", ast).yellow());
                                     }
-                                    EvalResult::Aether(n) => {
-                                        println!("{}", format!("{}", n).green())
+
+                                    match evaluate(&ast, &mut env) {
+                                        Ok(result) => match result {
+                                            EvalResult::Omen(b) => match b {
+                                                true => println!("{}", "boon".green()),
+                                                false => println!("{}", "hex".green()),
+                                            },
+                                            EvalResult::Arcana(n) => {
+                                                println!("{}", format!("{}", n).green())
+                                            }
+                                            EvalResult::Aether(n) => {
+                                                println!("{}", format!("{}", n).green())
+                                            }
+                                            EvalResult::Rune(s) => println!("{}", s.green()),
+                                            EvalResult::Abyss => {}
+                                        },
+                                        Err(e) => println!("{}", format!("Error: {}", e).red()),
                                     }
-                                    EvalResult::Rune(s) => println!("{}", s.green()),
-                                    EvalResult::Abyss => {}
-                                },
+                                }
                                 Err(e) => println!("{}", format!("Error: {}", e).red()),
                             }
                         }
                     }
                 }
-                Err(e) => println!("Error: {}", e),
+                Err(e) => println!("{}", format!("Error: {}", e).red()),
             }
             current_statement.clear();
         }

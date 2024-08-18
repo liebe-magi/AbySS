@@ -1,4 +1,4 @@
-use pest::error::Error;
+use pest::error::{Error, ErrorVariant};
 use pest::iterators::Pair;
 use pest::Parser;
 use pest_derive::Parser;
@@ -17,42 +17,51 @@ pub fn parse(input: &str) -> Result<Pair<Rule>, Error<Rule>> {
     }
 }
 
-pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> AST {
+pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST, Error<Rule>> {
     match pair.as_rule() {
         Rule::statement => build_ast(pair.into_inner().next().unwrap(), symbol_table),
         Rule::expression => build_ast(pair.into_inner().next().unwrap(), symbol_table),
         Rule::or_expr => {
             let mut inner = pair.into_inner();
-            let left = build_ast(inner.next().unwrap(), symbol_table);
+            let left = build_ast(inner.next().unwrap(), symbol_table)?;
             if let Some(operator_pair) = inner.next() {
                 let operator = operator_pair.as_str().to_string();
-                let right = build_ast(inner.next().unwrap(), symbol_table);
+                let right = build_ast(inner.next().unwrap(), symbol_table)?;
                 match operator.as_str() {
-                    "||" => AST::LogicalOr(Box::new(left), Box::new(right)),
-                    _ => panic!("Unexpected logical operator"),
+                    "||" => Ok(AST::LogicalOr(Box::new(left), Box::new(right))),
+                    _ => Err(Error::new_from_span(
+                        ErrorVariant::CustomError {
+                            message: "Unexpected logical operator".to_string(),
+                        },
+                        operator_pair.as_span(),
+                    )),
                 }
             } else {
-                left // 論理演算子がない場合は単純な`and_expr`ノードを返す
+                Ok(left) // 論理演算子がない場合は単純な`and_expr`ノードを返す
             }
         }
         Rule::and_expr => {
             let mut inner = pair.into_inner();
-            let left = build_ast(inner.next().unwrap(), symbol_table);
+            let left = build_ast(inner.next().unwrap(), symbol_table)?;
             if let Some(operator_pair) = inner.next() {
                 let operator = operator_pair.as_str().to_string();
-                let right = build_ast(inner.next().unwrap(), symbol_table);
+                let right = build_ast(inner.next().unwrap(), symbol_table)?;
                 match operator.as_str() {
-                    "&&" => AST::LogicalAnd(Box::new(left), Box::new(right)),
-                    _ => panic!("Unexpected logical operator"),
+                    "&&" => Ok(AST::LogicalAnd(Box::new(left), Box::new(right))),
+                    _ => Err(Error::new_from_span(
+                        ErrorVariant::CustomError {
+                            message: "Unexpected logical operator".to_string(),
+                        },
+                        operator_pair.as_span(),
+                    )),
                 }
             } else {
-                left // 論理演算子がない場合は単純な`not_expr`ノードを返す
+                Ok(left) // 論理演算子がない場合は単純な`not_expr`ノードを返す
             }
         }
         Rule::not_expr => {
             let mut inner = pair.into_inner();
 
-            // `not_op` が存在するか確認
             let exist_not_op = if inner.peek().unwrap().as_rule() == Rule::not_op {
                 inner.next(); // `not_op` を読み飛ばす
                 true
@@ -60,102 +69,130 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> AST {
                 false
             };
 
-            let expr = build_ast(inner.next().unwrap(), symbol_table);
+            let expr = build_ast(inner.next().unwrap(), symbol_table)?;
 
             if exist_not_op {
-                AST::LogicalNot(Box::new(expr))
+                Ok(AST::LogicalNot(Box::new(expr)))
             } else {
-                expr // `not_op` が存在しない場合は単純な`comp_expr`ノードを返す
+                Ok(expr) // `not_op` が存在しない場合は単純な`comp_expr`ノードを返す
             }
         }
         Rule::comp_expr => {
             let mut inner = pair.into_inner();
-            let left = build_ast(inner.next().unwrap(), symbol_table);
+            let left = build_ast(inner.next().unwrap(), symbol_table)?;
             if let Some(operator_pair) = inner.next() {
                 let operator = operator_pair.as_str().to_string();
-                let right = build_ast(inner.next().unwrap(), symbol_table);
+                let right = build_ast(inner.next().unwrap(), symbol_table)?;
                 match operator.as_str() {
-                    "==" => AST::Equal(Box::new(left), Box::new(right)),
-                    "!=" => AST::NotEqual(Box::new(left), Box::new(right)),
-                    "<" => AST::LessThan(Box::new(left), Box::new(right)),
-                    "<=" => AST::LessThanOrEqual(Box::new(left), Box::new(right)),
-                    ">" => AST::GreaterThan(Box::new(left), Box::new(right)),
-                    ">=" => AST::GreaterThanOrEqual(Box::new(left), Box::new(right)),
-                    _ => panic!("Unexpected comparison operator"),
+                    "==" => Ok(AST::Equal(Box::new(left), Box::new(right))),
+                    "!=" => Ok(AST::NotEqual(Box::new(left), Box::new(right))),
+                    "<" => Ok(AST::LessThan(Box::new(left), Box::new(right))),
+                    "<=" => Ok(AST::LessThanOrEqual(Box::new(left), Box::new(right))),
+                    ">" => Ok(AST::GreaterThan(Box::new(left), Box::new(right))),
+                    ">=" => Ok(AST::GreaterThanOrEqual(Box::new(left), Box::new(right))),
+                    _ => Err(Error::new_from_span(
+                        ErrorVariant::CustomError {
+                            message: "Unexpected comparison operator".to_string(),
+                        },
+                        operator_pair.as_span(),
+                    )),
                 }
             } else {
-                left // 比較演算子がない場合は単純な`power`ノードを返す
+                Ok(left) // 比較演算子がない場合は単純な`power`ノードを返す
             }
         }
         Rule::add_expr => {
             let mut inner = pair.into_inner();
-            let mut ast = build_ast(inner.next().unwrap(), symbol_table);
+            let mut ast = build_ast(inner.next().unwrap(), symbol_table)?;
 
-            while let Some(operator) = inner.next() {
-                let right = build_ast(inner.next().unwrap(), symbol_table);
-                ast = match operator.as_str() {
+            while let Some(operator_pair) = inner.next() {
+                let right = build_ast(inner.next().unwrap(), symbol_table)?;
+                ast = match operator_pair.as_str() {
                     "+" => AST::Add(Box::new(ast), Box::new(right)),
                     "-" => AST::Subtract(Box::new(ast), Box::new(right)),
-                    _ => unreachable!(),
+                    _ => {
+                        return Err(Error::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: "Unexpected addition operator".to_string(),
+                            },
+                            operator_pair.as_span(),
+                        ));
+                    }
                 };
             }
-            ast
+            Ok(ast)
         }
         Rule::mul_expr => {
             let mut inner = pair.into_inner();
-            let mut ast = build_ast(inner.next().unwrap(), symbol_table); // 最初のfactorを取得
+            let mut ast = build_ast(inner.next().unwrap(), symbol_table)?;
 
-            // mul_opとfactorのペアを処理
-            while let Some(operator) = inner.next() {
-                // 演算子を取得
-                let right = build_ast(inner.next().unwrap(), symbol_table); // 右側のfactorを取得
-                ast = match operator.as_str() {
+            while let Some(operator_pair) = inner.next() {
+                let right = build_ast(inner.next().unwrap(), symbol_table)?;
+                ast = match operator_pair.as_str() {
                     "*" => AST::Multiply(Box::new(ast), Box::new(right)),
                     "/" => AST::Divide(Box::new(ast), Box::new(right)),
                     "%" => AST::Modulo(Box::new(ast), Box::new(right)),
-                    _ => unreachable!(),
+                    _ => {
+                        return Err(Error::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: "Unexpected multiplication operator".to_string(),
+                            },
+                            operator_pair.as_span(),
+                        ));
+                    }
                 };
             }
-
-            ast
+            Ok(ast)
         }
         Rule::pow_expr => {
             let mut inner = pair.into_inner();
-            let mut ast = build_ast(inner.next().unwrap(), symbol_table);
+            let mut ast = build_ast(inner.next().unwrap(), symbol_table)?;
 
-            while let Some(operator) = inner.next() {
-                let right = build_ast(inner.next().unwrap(), symbol_table);
-                ast = match operator.as_str() {
+            while let Some(operator_pair) = inner.next() {
+                let right = build_ast(inner.next().unwrap(), symbol_table)?;
+                ast = match operator_pair.as_str() {
                     "^" => AST::PowArcana(Box::new(ast), Box::new(right)),
                     "**" => AST::PowAether(Box::new(ast), Box::new(right)),
-                    _ => unreachable!(),
+                    _ => {
+                        return Err(Error::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: "Unexpected power operator".to_string(),
+                            },
+                            operator_pair.as_span(),
+                        ));
+                    }
                 };
             }
-
-            ast
+            Ok(ast)
         }
         Rule::factor => build_ast(pair.into_inner().next().unwrap(), symbol_table),
         Rule::omen => {
             let value = pair.as_str();
             match value {
-                "boon" => AST::Omen(true),
-                "hex" => AST::Omen(false),
-                _ => panic!("Unknown omen: {}", value),
+                "boon" => Ok(AST::Omen(true)),
+                "hex" => Ok(AST::Omen(false)),
+                _ => Err(Error::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "Unknown omen value".to_string(),
+                    },
+                    pair.as_span(),
+                )),
             }
         }
         Rule::arcana => {
             let value = pair.as_str().parse().unwrap();
-            AST::Arcana(value)
+            Ok(AST::Arcana(value))
         }
         Rule::aether => {
             let value = pair.as_str().parse().unwrap();
-            AST::Aether(value)
+            Ok(AST::Aether(value))
         }
         Rule::rune => {
             let value = pair.as_str().trim_matches('"').to_string();
-            AST::Rune(value)
+            Ok(AST::Rune(value))
         }
         Rule::forge_var => {
+            let span = pair.as_span(); // `pair`の`span`を取得して保持しておく
             let mut inner = pair.into_inner();
 
             let is_morph = if inner.peek().unwrap().as_rule() == Rule::morph {
@@ -166,16 +203,20 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> AST {
             };
 
             let var_name = inner.next().unwrap().as_str().to_string();
-            // 型情報を取得して設定
             let var_type = match inner.next().unwrap().as_str() {
                 "arcana" => Type::Arcana,
                 "aether" => Type::Aether,
                 "rune" => Type::Rune,
                 "omen" => Type::Omen,
-                _ => panic!("Unknown type in variable declaration"),
+                _ => Err(Error::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "Unknown type in forge variable".to_string(),
+                    },
+                    span,
+                ))?,
             };
 
-            let value = build_ast(inner.next().unwrap(), symbol_table);
+            let value = build_ast(inner.next().unwrap(), symbol_table)?;
 
             symbol_table.insert(
                 var_name.clone(),
@@ -185,12 +226,12 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> AST {
                 },
             );
 
-            AST::VarAssign {
+            Ok(AST::VarAssign {
                 name: var_name,
                 value: Box::new(value),
                 var_type,
                 is_morph,
-            }
+            })
         }
         Rule::assignment => {
             let mut inner = pair.into_inner();
@@ -204,48 +245,67 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> AST {
                 "%=" => AssignmentOp::ModAssign,
                 "^=" => AssignmentOp::PowArcanaAssign,
                 "**=" => AssignmentOp::PowAetherAssign,
-                _ => panic!("Unexpected assignment operator"),
+                _ => Err(Error::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "Unexpected assignment operator".to_string(),
+                    },
+                    inner.next().unwrap().as_span(),
+                ))?,
             };
-            let value = build_ast(inner.next().unwrap(), symbol_table);
+            let value = build_ast(inner.next().unwrap(), symbol_table)?;
 
-            AST::Assignment {
+            Ok(AST::Assignment {
                 name: var_name,
                 value: Box::new(value),
-                op, // 新しく追加した演算子情報をセット
-            }
+                op,
+            })
         }
         Rule::identifier => {
             let var_name = pair.as_str().to_string();
-
             if let Some(symbol_info) = symbol_table.get(&var_name) {
-                AST::Var {
+                Ok(AST::Var {
                     name: var_name,
                     var_type: symbol_info.var_type.clone(),
                     is_morph: symbol_info.is_morph,
-                }
+                })
             } else {
-                panic!("Unknown variable: {}", var_name);
+                Err(Error::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: format!("Variable `{}` is not defined", var_name),
+                    },
+                    pair.as_span(),
+                ))
             }
         }
         Rule::unveil => {
             let inner = pair.into_inner();
-            let args = inner.map(|p| build_ast(p, symbol_table)).collect(); // シンボルテーブルを渡す
-            AST::Unveil(args)
+            let args: Result<Vec<AST>, Error<Rule>> =
+                inner.map(|p| build_ast(p, symbol_table)).collect();
+            Ok(AST::Unveil(args?))
         }
         Rule::trans_expr => {
+            let span = pair.as_span(); // `pair`の`span`を取得して保持しておく
             let mut inner = pair.into_inner();
-            let expr = build_ast(inner.next().unwrap(), symbol_table);
+            let expr = build_ast(inner.next().unwrap(), symbol_table)?;
             let target_type = match inner.next().unwrap().as_str() {
                 "arcana" => Type::Arcana,
                 "aether" => Type::Aether,
                 "rune" => Type::Rune,
                 "omen" => Type::Omen,
-                _ => panic!("Unknown type in trans expression"),
+                _ => Err(Error::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "Unknown type in trans expression".to_string(),
+                    },
+                    span, // ここで保持していた`span`を使う
+                ))?,
             };
-            AST::Trans(Box::new(expr), target_type)
+            Ok(AST::Trans(Box::new(expr), target_type))
         }
-        _ => {
-            panic!("Unexpected rule: {:?}", pair.as_rule())
-        }
+        _ => Err(Error::new_from_span(
+            ErrorVariant::CustomError {
+                message: "Unexpected rule".to_string(),
+            },
+            pair.as_span(),
+        )),
     }
 }

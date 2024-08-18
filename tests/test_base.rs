@@ -12,11 +12,17 @@ pub fn test_base(input: &str) -> Result<Vec<EvalResult>, Box<dyn std::error::Err
             let mut results = Vec::new();
             for inner_pair in pair.into_inner() {
                 if inner_pair.as_rule() != Rule::EOI {
-                    let ast = build_ast(inner_pair, &mut st);
-                    println!("{:?}", ast);
-                    match evaluate(&ast, &mut env) {
-                        Ok(result) => {
-                            results.push(result);
+                    match build_ast(inner_pair, &mut st) {
+                        Ok(ast) => {
+                            println!("{:?}", ast);
+                            match evaluate(&ast, &mut env) {
+                                Ok(result) => {
+                                    results.push(result);
+                                }
+                                Err(e) => {
+                                    return Err(Box::new(e)); // エラーを Box に包んで返す
+                                }
+                            }
                         }
                         Err(e) => {
                             return Err(Box::new(e)); // エラーを Box に包んで返す
