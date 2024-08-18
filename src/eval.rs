@@ -1,5 +1,6 @@
 use crate::ast::{AssignmentOp, LineInfo, Type, AST};
 use crate::env::{Environment, Value};
+use colored::*;
 use std::fmt;
 
 pub enum EvalResult {
@@ -20,34 +21,38 @@ pub enum EvalError {
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EvalError::UndefinedVariable(var, Some(line_info)) => write!(
-                f,
-                "Variable {} is not defined! at line {}, column {}",
-                var, line_info.line, line_info.column
-            ),
-            EvalError::InvalidOperation(op, Some(line_info)) => write!(
-                f,
-                "Invalid operation: {} at line {}, column {}",
-                op, line_info.line, line_info.column
-            ),
-            EvalError::NegativeExponent(Some(line_info)) => write!(
-                f,
-                "PowArcana operation requires a non-negative exponent! at line {}, column {}",
-                line_info.line, line_info.column
-            ),
-            // LineInfoがない場合のフォールバック
-            EvalError::UndefinedVariable(var, None) => {
-                write!(f, "Variable {} is not defined!", var)
-            }
-            EvalError::InvalidOperation(op, None) => write!(f, "Invalid operation: {}", op),
-            EvalError::NegativeExponent(None) => {
+            EvalError::UndefinedVariable(var, _) => write!(f, "Variable {} is not defined!", var),
+            EvalError::InvalidOperation(op, _) => write!(f, "Invalid operation: {}", op),
+            EvalError::NegativeExponent(_) => {
                 write!(f, "PowArcana operation requires a non-negative exponent!")
             }
         }
     }
 }
-
 impl std::error::Error for EvalError {}
+
+pub fn display_error_with_source(script: &str, line_info: Option<LineInfo>, error_message: &str) {
+    if let Some(info) = line_info {
+        let lines: Vec<&str> = script.lines().collect();
+        if let Some(source_line) = lines.get(info.line - 1) {
+            // 行番号は1から始まるため -1
+            eprintln!(
+                "{}",
+                format!(
+                    "Error at line {}, column {}: {}",
+                    info.line, info.column, error_message
+                )
+                .red()
+            );
+            eprintln!("  {}", source_line.red());
+            eprintln!("  {}{}", " ".repeat(info.column - 1).red(), "^".red());
+        } else {
+            eprintln!("{}", format!("Error: {}", error_message).red());
+        }
+    } else {
+        eprintln!("{}", format!("Error: {}", error_message).red());
+    }
+}
 
 pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalError> {
     match ast {

@@ -1,6 +1,6 @@
 use abyss_lang::{
     env::{Environment, SymbolTable},
-    eval::{evaluate, EvalResult},
+    eval::{display_error_with_source, evaluate, EvalError, EvalResult},
     parser::{build_ast, parse, Rule},
 };
 use clap::{Parser, Subcommand};
@@ -45,7 +45,21 @@ fn execute_script(script: &str) {
                     match build_ast(inner_pair, &mut st) {
                         Ok(ast) => match evaluate(&ast, &mut env) {
                             Ok(_) => {}
-                            Err(e) => panic!("Error: {}", e),
+                            Err(e) => {
+                                let error_message = e.to_string();
+                                match e {
+                                    EvalError::UndefinedVariable(_, line_info)
+                                    | EvalError::InvalidOperation(_, line_info)
+                                    | EvalError::NegativeExponent(line_info) => {
+                                        display_error_with_source(
+                                            script,
+                                            line_info,
+                                            &error_message,
+                                        );
+                                        return;
+                                    }
+                                }
+                            }
                         },
                         Err(e) => panic!("Error: {}", e),
                     }
@@ -117,7 +131,20 @@ fn start_interpreter(debug: bool) {
                                             EvalResult::Rune(s) => println!("{}", s.green()),
                                             EvalResult::Abyss => {}
                                         },
-                                        Err(e) => println!("{}", format!("Error: {}", e).red()),
+                                        Err(e) => {
+                                            let error_message = e.to_string();
+                                            match e {
+                                                EvalError::UndefinedVariable(_, line_info)
+                                                | EvalError::InvalidOperation(_, line_info)
+                                                | EvalError::NegativeExponent(line_info) => {
+                                                    display_error_with_source(
+                                                        &current_statement,
+                                                        line_info,
+                                                        &error_message,
+                                                    );
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                                 Err(e) => println!("{}", format!("Error: {}", e).red()),

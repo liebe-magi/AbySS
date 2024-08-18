@@ -1,6 +1,6 @@
 use abyss_lang::{
     env::{Environment, SymbolTable},
-    eval::{evaluate, EvalResult},
+    eval::{display_error_with_source, evaluate, EvalError, EvalResult},
     parser::{build_ast, parse, Rule},
 };
 
@@ -20,7 +20,19 @@ pub fn test_base(input: &str) -> Result<Vec<EvalResult>, Box<dyn std::error::Err
                                     results.push(result);
                                 }
                                 Err(e) => {
-                                    return Err(Box::new(e)); // エラーを Box に包んで返す
+                                    let error_message = e.to_string();
+                                    match &e {
+                                        EvalError::UndefinedVariable(_, line_info)
+                                        | EvalError::InvalidOperation(_, line_info)
+                                        | EvalError::NegativeExponent(line_info) => {
+                                            display_error_with_source(
+                                                input,
+                                                line_info.clone(),
+                                                &error_message,
+                                            );
+                                            return Err(Box::new(e));
+                                        }
+                                    }
                                 }
                             }
                         }
