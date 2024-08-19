@@ -149,6 +149,7 @@ fn start_interpreter(debug: bool) {
                                                         println!("{}", s.green())
                                                     }
                                                     EvalResult::Abyss => {}
+                                                    _ => {}
                                                 },
                                                 Err(e) => {
                                                     println!("{}", format!("Error: {}", e).red())

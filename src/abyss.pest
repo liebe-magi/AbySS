@@ -5,11 +5,22 @@ line_comment  = _{ "//" ~ (!"\n" ~ ANY)* }
 block_comment = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 
 statements = { SOI ~ statement* ~ EOI }
-statement  = { (forge_var | assignment | unveil | expression) ~ ";" }
+statement  = { (forge_var | assignment | unveil | reveal | expression) ~ ";" }
+block      = { "{" ~ statement* ~ "}" ~ ";" }
 
 forge_var  = { "forge" ~ morph? ~ identifier ~ ":" ~ type ~ "=" ~ expression }
 assignment = { identifier ~ assignment_op ~ expression }
 unveil     = { "unveil" ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
+reveal     = { "reveal" ~ "(" ~ expression ~ ")" }
+
+oracle_expr             = { "oracle" ~ oracle_conditional? ~ "{" ~ oracle_branch* ~ "}" }
+oracle_conditional      = { "(" ~ (conditional_assignments | expressions) ~ ")" }
+conditional_assignments = { conditional_assignment ~ ("," ~ conditional_assignment)* }
+conditional_assignment  = { identifier ~ "=" ~ expression }
+
+oracle_branch   = { pattern ~ "=>" ~ (block | statement) }
+pattern         = { "(" ~ expressions ~ ")" | default_pattern }
+default_pattern = { "_" }
 
 identifier = @{ ASCII_ALPHANUMERIC+ }
 type       =  { "omen" | "aether" | "arcana" | "rune" }
@@ -21,16 +32,17 @@ rune       = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 sign  = { "+" | "-" }
 morph = { "morph" }
 
-expression = { trans_expr | or_expr }
-trans_expr = { "trans" ~ "(" ~ expression ~ "as" ~ type ~ ")" }
-or_expr    = { and_expr ~ (or_op ~ and_expr)* }
-and_expr   = { not_expr ~ (and_op ~ not_expr)* }
-not_expr   = { not_op? ~ comp_expr }
-comp_expr  = { add_expr ~ (comp_op ~ add_expr)? }
-add_expr   = { mul_expr ~ (add_op ~ mul_expr)* }
-mul_expr   = { pow_expr ~ (mul_op ~ pow_expr)* }
-pow_expr   = { factor ~ (pow_op ~ factor)* }
-factor     = { omen | aether | arcana | rune | identifier | "(" ~ expression ~ ")" }
+expressions = { expression ~ ("," ~ expression)* }
+expression  = { trans_expr | oracle_expr | or_expr }
+trans_expr  = { "trans" ~ "(" ~ expression ~ "as" ~ type ~ ")" }
+or_expr     = { and_expr ~ (or_op ~ and_expr)* }
+and_expr    = { not_expr ~ (and_op ~ not_expr)* }
+not_expr    = { not_op? ~ comp_expr }
+comp_expr   = { add_expr ~ (comp_op ~ add_expr)? }
+add_expr    = { mul_expr ~ (add_op ~ mul_expr)* }
+mul_expr    = { pow_expr ~ (mul_op ~ pow_expr)* }
+pow_expr    = { factor ~ (pow_op ~ factor)* }
+factor      = { omen | aether | arcana | rune | identifier | "(" ~ expression ~ ")" }
 
 assignment_op = { "+=" | "-=" | "*=" | "/=" | "%=" | "^=" | "**=" | "=" }
 

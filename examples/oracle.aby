@@ -1,0 +1,48 @@
+// シンプルな書き方
+forge x: arcana = -5;
+oracle {
+    (x > 0) => unveil("x is positive");
+    (x < 0) => unveil("x is negative");
+    _ => unveil("x is zero");
+};
+
+// 条件文にOmen型を使う場合
+oracle (x > 0) {
+    (boon) => unveil("x is positive");
+    (hex) => unveil("x is negative or zero");
+};
+
+// 条件文にOmen型以外を使う場合
+oracle (y = x ^ 2) {
+    (y > 100) => unveil("y is greater than 100");
+    (y == 100) => unveil("y is equal to 100");
+    _ => unveil("y is less than 100");
+};
+
+oracle (a = "abyss-lang") {
+    (a == "abyss") => unveil("a is abyss");
+    _ => unveil("a is not abyss");
+};
+
+// 条件文に複数の条件を使う場合
+oracle (a = 3, b = 2) {
+    (a == 1 && b == 2) => unveil("a is 1 and b is 2");
+    (a != 1 && b == 2) => unveil("a is not 1 and b is 2");
+    (a == 1 && b != 2) => unveil("a is 1 and b is not 2");
+    _ => unveil("a is not 1 and b is not 2");
+};
+
+// xが正の場合、xを表示する、xが負の場合、xを反転して表示する
+forge x: arcana = -5;
+forge y: arcana = oracle (x > 0) {
+    (boon) => reveal(x);
+    (hex) => {
+        forge z: arcana = x * (-1);
+        oracle {
+            (z > 0) => unveil("z is positive");
+            (z < 0) => unveil("z is negative");
+            _ => unveil("z is zero");
+        };
+        reveal(z);
+    };
+};

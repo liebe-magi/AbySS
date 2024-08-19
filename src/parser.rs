@@ -3,7 +3,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use pest_derive::Parser;
 
-use crate::ast::{AssignmentOp, LineInfo, Type, AST};
+use crate::ast::{AssignmentOp, ConditionalAssignment, LineInfo, OracleBranch, Type, AST};
 use crate::env::{SymbolInfo, SymbolTable};
 
 #[derive(Parser)]
@@ -272,21 +272,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         }
         Rule::identifier => {
             let var_name = pair.as_str().to_string();
-            if let Some(symbol_info) = symbol_table.get(&var_name) {
-                Ok(AST::Var {
-                    name: var_name,
-                    var_type: symbol_info.var_type.clone(),
-                    is_morph: symbol_info.is_morph,
-                    line_info,
-                })
-            } else {
-                Err(Error::new_from_span(
-                    ErrorVariant::CustomError {
-                        message: format!("Variable `{}` is not defined", var_name),
-                    },
-                    pair.as_span(),
-                ))
-            }
+            Ok(AST::Var(var_name, line_info))
         }
         Rule::unveil => {
             let inner = pair.into_inner();
@@ -312,9 +298,112 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             };
             Ok(AST::Trans(Box::new(expr), target_type, line_info))
         }
+        Rule::reveal => {
+            let mut inner = pair.into_inner();
+            let expression = build_ast(inner.next().unwrap(), symbol_table)?;
+            Ok(AST::Reveal(Box::new(expression), line_info))
+        }
+        // Rule::block => {
+        //     let mut statements = Vec::new();
+        //     let inner = pair.into_inner();
+        //     for statement_pair in inner {
+        //         let statement = build_ast(statement_pair, symbol_table)?;
+        //         statements.push(statement);
+        //     }
+        //     Ok(AST::Block(statements, line_info))
+        // }
+        Rule::oracle_expr => {
+            let mut inner = pair.into_inner();
+            let mut conditionals = Vec::new();
+            let mut branches = Vec::new();
+            let mut is_match = false;
+
+            // 条件部分があるかどうかチェック
+            if let Some(conditional_or_branches) = inner.peek() {
+                if conditional_or_branches.as_rule() == Rule::oracle_conditional {
+                    let mut condition_pair = inner.next().unwrap().into_inner();
+                    let conditions = condition_pair.next().unwrap().into_inner();
+                    for (idx, condition) in conditions.enumerate() {
+                        if condition.as_rule() == Rule::conditional_assignment {
+                            let mut inner_pairs = condition.into_inner();
+                            let identifier = inner_pairs.next().unwrap().as_str().to_string();
+                            let expression = build_ast(inner_pairs.next().unwrap(), symbol_table)?;
+                            conditionals.push(ConditionalAssignment {
+                                variable: identifier,
+                                expression: Box::new(expression),
+                                line_info: line_info.clone(),
+                            });
+                        } else {
+                            is_match = true;
+                            let mut inner_pairs = condition.into_inner();
+                            let expression = build_ast(inner_pairs.next().unwrap(), symbol_table)?;
+                            conditionals.push(ConditionalAssignment {
+                                variable: format!("__match_{}", idx),
+                                expression: Box::new(expression),
+                                line_info: line_info.clone(),
+                            });
+                        }
+                    }
+                }
+            }
+            // ブランチ部分の解析
+            for branch_pair in inner {
+                let branch_span = branch_pair.as_span();
+                let mut branch_inner = branch_pair.into_inner();
+
+                let rule = branch_inner
+                    .peek()
+                    .unwrap()
+                    .into_inner()
+                    .next()
+                    .unwrap()
+                    .as_rule();
+                if rule == Rule::expressions {
+                    let mut expr_pairs = branch_inner.next().unwrap().into_inner();
+                    let exprs = expr_pairs.next().unwrap().into_inner();
+                    let mut pats = vec![];
+                    for expr in exprs {
+                        let pat_ast = build_ast(expr, symbol_table)?;
+                        pats.push(pat_ast);
+                    }
+                    let body_ast = build_ast(branch_inner.next().unwrap(), symbol_table)?;
+                    branches.push(OracleBranch {
+                        pattern: pats,
+                        body: Box::new(body_ast),
+                        line_info: Some(LineInfo::from_span(&branch_span)),
+                    });
+                } else {
+                    branch_inner.next(); // branch_innerを読み飛ばす
+                    let body_ast = if let Some(body) = branch_inner.next() {
+                        build_ast(body, symbol_table)?
+                    } else {
+                        return Err(Error::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: "Branch body is missing".to_string(),
+                            },
+                            branch_span,
+                        ));
+                    };
+
+                    branches.push(OracleBranch {
+                        pattern: Vec::new(),
+                        body: Box::new(body_ast),
+                        line_info: Some(LineInfo::from_span(&branch_span)),
+                    });
+                }
+            }
+            Ok(AST::Oracle {
+                is_match,
+                conditionals,
+                branches,
+                line_info,
+            })
+        }
+        Rule::pattern => build_ast(pair.into_inner().next().unwrap(), symbol_table),
+        Rule::default_pattern => Ok(AST::OracleDefaultBranch(line_info)),
         _ => Err(Error::new_from_span(
             ErrorVariant::CustomError {
-                message: "Unexpected rule".to_string(),
+                message: format!("Unexpected rule: {:?}", pair.as_rule()),
             },
             pair.as_span(),
         )),

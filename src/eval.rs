@@ -1,14 +1,16 @@
-use crate::ast::{AssignmentOp, LineInfo, Type, AST};
+use crate::ast::{AssignmentOp, ConditionalAssignment, LineInfo, Type, AST};
 use crate::env::{Environment, Value};
 use colored::*;
 use std::fmt;
 
+#[derive(Debug)]
 pub enum EvalResult {
     Omen(bool),
     Arcana(i64),
     Aether(f64),
     Rune(String),
     Abyss,
+    Revealed(Box<EvalResult>),
 }
 
 #[derive(Debug)]
@@ -343,30 +345,13 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 ))
             }
         }
-        AST::Var {
-            name,
-            var_type,
-            line_info,
-            ..
-        } => match env.get_var(name) {
-            Some(var_info) => {
-                if var_info.var_type != *var_type {
-                    return Err(EvalError::InvalidOperation(
-                        format!(
-                            "Type mismatch: variable {} is of type {:?}, but {:?} was expected",
-                            name, var_info.var_type, var_type
-                        ),
-                        line_info.clone(),
-                    ));
-                }
-
-                match &var_info.value {
-                    Value::Omen(b) => Ok(EvalResult::Omen(*b)),
-                    Value::Arcana(n) => Ok(EvalResult::Arcana(*n)),
-                    Value::Aether(n) => Ok(EvalResult::Aether(*n)),
-                    Value::Rune(s) => Ok(EvalResult::Rune(s.clone())),
-                }
-            }
+        AST::Var(name, line_info) => match env.get_var(name) {
+            Some(var_info) => match &var_info.value {
+                Value::Omen(b) => Ok(EvalResult::Omen(*b)),
+                Value::Arcana(n) => Ok(EvalResult::Arcana(*n)),
+                Value::Aether(n) => Ok(EvalResult::Aether(*n)),
+                Value::Rune(s) => Ok(EvalResult::Rune(s.clone())),
+            },
             None => Err(EvalError::UndefinedVariable(
                 name.clone(),
                 line_info.clone(),
@@ -387,6 +372,10 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                     EvalResult::Aether(n) => Ok(n.to_string()),
                     EvalResult::Rune(s) => Ok(s.replace("\\n", "\n")),
                     EvalResult::Abyss => Ok("".to_string()),
+                    _ => Err(EvalError::InvalidOperation(
+                        "Unsupported type in unveil statement".to_string(),
+                        None,
+                    )),
                 })
                 .collect();
             let output_str = outputs?.join("");
@@ -435,6 +424,138 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                     line_info.clone(),
                 )),
             }
+        }
+        AST::Oracle {
+            is_match,
+            conditionals,
+            branches,
+            line_info,
+        } => {
+            env.push_scope(); // 新しいスコープを作成
+
+            // 条件式を評価して環境に代入するヘルパー関数
+            let mut evaluate_and_set_var =
+                |conditional: &ConditionalAssignment| -> Result<(), EvalError> {
+                    let result = evaluate(&conditional.expression, env)?;
+                    match result {
+                        EvalResult::Arcana(n) => env.set_var(
+                            conditional.variable.clone(),
+                            Value::Arcana(n),
+                            Type::Arcana,
+                            false,
+                        ),
+                        EvalResult::Aether(n) => env.set_var(
+                            conditional.variable.clone(),
+                            Value::Aether(n),
+                            Type::Aether,
+                            false,
+                        ),
+                        EvalResult::Rune(ref s) => env.set_var(
+                            conditional.variable.clone(),
+                            Value::Rune(s.clone()),
+                            Type::Rune,
+                            false,
+                        ),
+                        EvalResult::Omen(b) => env.set_var(
+                            conditional.variable.clone(),
+                            Value::Omen(b),
+                            Type::Omen,
+                            false,
+                        ),
+                        _ => {
+                            return Err(EvalError::InvalidOperation(
+                                format!("Unsupported type in oracle conditional: {:?}", result),
+                                line_info.clone(),
+                            ))
+                        }
+                    }
+                    Ok(())
+                };
+
+            // 条件式が指定されている場合、すべての条件式を評価して環境に代入
+            for conditional in conditionals {
+                evaluate_and_set_var(conditional)?;
+            }
+
+            // 分岐の評価処理
+            for branch in branches {
+                let matched = if branch.pattern.is_empty() {
+                    // デフォルトブランチ
+                    true
+                } else if *is_match {
+                    // パターンマッチング
+                    let mut matched = true;
+                    for (idx, pattern) in branch.pattern.iter().enumerate() {
+                        let pattern_result = evaluate(pattern, env)?;
+                        let conditional_result = evaluate(&conditionals[idx].expression, env)?;
+
+                        match (conditional_result, pattern_result) {
+                            (EvalResult::Arcana(cond_n), EvalResult::Arcana(pat_n)) => {
+                                if cond_n != pat_n {
+                                    matched = false;
+                                    break;
+                                }
+                            }
+                            (EvalResult::Aether(cond_n), EvalResult::Aether(pat_n)) => {
+                                if (cond_n - pat_n).abs() >= std::f64::EPSILON {
+                                    matched = false;
+                                    break;
+                                }
+                            }
+                            (EvalResult::Rune(cond_s), EvalResult::Rune(pat_s)) => {
+                                if cond_s != pat_s {
+                                    matched = false;
+                                    break;
+                                }
+                            }
+                            (EvalResult::Omen(cond_b), EvalResult::Omen(pat_b)) => {
+                                if cond_b != pat_b {
+                                    matched = false;
+                                    break;
+                                }
+                            }
+                            _ => {
+                                return Err(EvalError::InvalidOperation(
+                                    "Oracle branch pattern type must match conditional type"
+                                        .to_string(),
+                                    line_info.clone(),
+                                ))
+                            }
+                        }
+                    }
+                    matched
+                } else {
+                    // Omen型パターンマッチング
+                    branch
+                        .pattern
+                        .iter()
+                        .all(|pattern| matches!(evaluate(pattern, env), Ok(EvalResult::Omen(true))))
+                };
+
+                // パターンが一致したらブランチを評価して終了
+                if matched {
+                    let result = match evaluate(&branch.body, env) {
+                        Ok(result) => match result {
+                            EvalResult::Revealed(revealed) => *revealed,
+                            _ => result,
+                        },
+                        Err(e) => return Err(e),
+                    };
+                    env.pop_scope(); // スコープを終了
+                    return Ok(result);
+                }
+            }
+
+            env.pop_scope(); // スコープを終了
+            Err(EvalError::InvalidOperation(
+                "No matching pattern found in oracle statement".to_string(),
+                line_info.clone(),
+            ))
+        }
+        AST::OracleDefaultBranch(_line_info) => Ok(EvalResult::Omen(true)),
+        AST::Reveal(expr, _line_info) => {
+            let result = evaluate(expr, env)?;
+            Ok(EvalResult::Revealed(Box::new(result)))
         }
     }
 }

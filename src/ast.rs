@@ -48,16 +48,32 @@ pub enum AST {
         op: AssignmentOp,
         line_info: Option<LineInfo>,
     },
-    Var {
-        name: String,
-        var_type: Type,
-        is_morph: bool,
-        line_info: Option<LineInfo>,
-    },
+    Var(String, Option<LineInfo>),
     Unveil(Vec<AST>, Option<LineInfo>),
     Trans(Box<AST>, Type, Option<LineInfo>),
+    Reveal(Box<AST>, Option<LineInfo>),
+    Oracle {
+        is_match: bool,
+        conditionals: Vec<ConditionalAssignment>,
+        branches: Vec<OracleBranch>,
+        line_info: Option<LineInfo>,
+    },
+    OracleDefaultBranch(Option<LineInfo>), // Block(Vec<AST>, Option<LineInfo>),
 }
 
+#[derive(Debug, Clone)]
+pub struct ConditionalAssignment {
+    pub variable: String,     // 条件文で参照する変数
+    pub expression: Box<AST>, // 変数に代入される式
+    pub line_info: Option<LineInfo>,
+}
+
+#[derive(Debug, Clone)]
+pub struct OracleBranch {
+    pub pattern: Vec<AST>,
+    pub body: Box<AST>,
+    pub line_info: Option<LineInfo>,
+}
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Arcana,
