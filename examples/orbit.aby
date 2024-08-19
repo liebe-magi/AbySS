@@ -1,0 +1,55 @@
+// シンプルなループ
+orbit(i = 0..10) {
+    unveil(i);
+};
+
+// 無限ループ
+orbit {
+    /*
+    ここで何か処理を行う
+    */
+    oracle(condition) {
+        (boon) => eject;
+    };
+};
+
+// 多重ループ
+orbit(i = 0..3, j = 0..3) {
+    unveil(i, " ", j);
+};
+/* 以下の出力を想定
+0 0
+0 1
+0 2
+1 0
+1 1
+1 2
+2 0
+2 1
+2 2
+*/
+
+// continue
+orbit(i = 0..3, j = 0..3) {
+    oracle(i==j) {
+        (boon) => resume j; // 内側のループをスキップ
+    };
+    unveil(i, " ", j);
+};
+/* 以下の出力を想定
+0 1
+0 2
+1 0
+1 2
+2 0
+2 1
+*/
+
+// ループのネスト
+orbit(i = 0..3) {
+    orbit(j = 0..3) {
+        oracle(conditon) {
+            (boon) => eject i; // 外側のループを抜ける
+        };
+    };
+};

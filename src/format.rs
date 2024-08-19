@@ -164,7 +164,7 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             for statement in statements {
                 result.push_str(&format!("{}\n", format_ast(statement, indent_level + 1)));
             }
-            result.push_str(&format!("{}}};", indent));
+            result.push_str(&format!("{}}}", indent));
             result
         }
         AST::Oracle {

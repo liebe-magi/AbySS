@@ -43,6 +43,6 @@ forge y: arcana = oracle (x > 0) {
             (hex) => -999;
         };
         unveil("Not displayed");
-    };
+    }
 };
 unveil(y);

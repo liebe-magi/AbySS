@@ -137,7 +137,7 @@ fn test_oracle_with_block_and_reveal() {
                 (boon) => reveal(x + 5);
                 (hex) => reveal(x - 5);
             };
-        };
+        }
     };
     y;
     "#;

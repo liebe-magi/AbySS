@@ -5,8 +5,8 @@ line_comment  = _{ "//" ~ (!"\n" ~ ANY)* }
 block_comment = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 
 statements = { SOI ~ statement* ~ EOI }
-statement  = { (forge_var | assignment | unveil | reveal | expression) ~ ";" }
-block      = { "{" ~ statement* ~ "}" ~ ";" }
+statement  = { (forge_var | unveil | reveal | orbit | orbit_flow | assignment | expression) ~ ";" }
+block      = { "{" ~ statement* ~ "}" }
 
 forge_var  = { "forge" ~ morph? ~ identifier ~ ":" ~ type ~ "=" ~ expression }
 assignment = { identifier ~ assignment_op ~ expression }
@@ -23,6 +23,16 @@ pattern       = { "(" ~ pattern_elements ~ ")" | "_" }
 
 pattern_elements = { pattern_element ~ ("," ~ pattern_element)* }
 pattern_element  = { expression | "_" }
+
+orbit        = { "orbit" ~ orbit_params? ~ block }
+orbit_params = { "(" ~ orbit_param ~ ("," ~ orbit_param)* ~ ")" }
+orbit_param  = { identifier ~ "=" ~ range_expr }
+range_expr   = { expression ~ range_op ~ expression }
+range_op     = { ".." | "..=" }
+
+orbit_flow  = { resume_expr | eject_expr }
+resume_expr = { "resume" ~ identifier? }
+eject_expr  = { "eject" ~ identifier? }
 
 identifier = @{ ASCII_ALPHANUMERIC+ }
 type       =  { "omen" | "aether" | "arcana" | "rune" }
