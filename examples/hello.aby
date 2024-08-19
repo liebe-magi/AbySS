@@ -1,6 +1,8 @@
 // This is a single line comment
-forge hello: rune = "Hello World from AbySS!";
-unveil(hello, "\n");
+forge hello: rune = "Hello";
+forge morph world: rune = "World";
+world += " from AbySS!";
+unveil(hello," ",world,"\n");
 
 /*
 This is a block comment
@@ -13,4 +15,4 @@ unveil("1 - 2 - 3 = ", 1 - 2 - 3);
 unveil("8 - 6 / 3 = ", 8 - 6 / 3);
 unveil("3 * (2 + 3) = ", 3 * (2 + 3));
 unveil("3 ^ (2 + 3) = ", 3 ^ (2 + 3));
-unveil("3.0 ** (-2.0) = ", 3.0 ** (-2.0));
+unveil("(2.0 + 3.11) ** (-2.0) = ", (2.0 + 3.11) ** (-2.0));

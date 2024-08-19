@@ -15,15 +15,16 @@ impl LineInfo {
 
 #[derive(Debug, Clone)]
 pub enum AST {
+    Statement(Box<AST>, Option<LineInfo>),
     Omen(bool, Option<LineInfo>),
     Arcana(i64, Option<LineInfo>),
     Aether(f64, Option<LineInfo>),
     Rune(String, Option<LineInfo>),
     Add(Box<AST>, Box<AST>, Option<LineInfo>),
-    Subtract(Box<AST>, Box<AST>, Option<LineInfo>),
-    Multiply(Box<AST>, Box<AST>, Option<LineInfo>),
-    Divide(Box<AST>, Box<AST>, Option<LineInfo>),
-    Modulo(Box<AST>, Box<AST>, Option<LineInfo>),
+    Sub(Box<AST>, Box<AST>, Option<LineInfo>),
+    Mul(Box<AST>, Box<AST>, Option<LineInfo>),
+    Div(Box<AST>, Box<AST>, Option<LineInfo>),
+    Mod(Box<AST>, Box<AST>, Option<LineInfo>),
     PowArcana(Box<AST>, Box<AST>, Option<LineInfo>),
     PowAether(Box<AST>, Box<AST>, Option<LineInfo>),
     Equal(Box<AST>, Box<AST>, Option<LineInfo>),
@@ -60,6 +61,7 @@ pub enum AST {
     },
     OracleDontCareItem(Option<LineInfo>),
     Block(Vec<AST>, Option<LineInfo>),
+    Comment(String, Option<LineInfo>),
 }
 
 #[derive(Debug, Clone)]

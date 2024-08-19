@@ -104,7 +104,8 @@ fn execute_format(script: &str) {
                 if inner_pair.as_rule() != Rule::EOI {
                     match build_ast(inner_pair) {
                         Ok(ast) => {
-                            let formatted_code = format_ast(&ast, 0) + ";";
+                            // println!("AST: {:#?}", ast);
+                            let formatted_code = format_ast(&ast, 0);
                             println!("{}", formatted_code);
                         }
                         Err(e) => panic!("Error: {}", e),
@@ -190,7 +191,7 @@ fn start_interpreter(debug: bool) {
                                             match evaluate(&ast, &mut env) {
                                                 Ok(result) => {
                                                     current_session_code
-                                                        .push_str(&current_statement);
+                                                        .push_str(&format_ast(&ast, 0));
                                                     current_session_code.push('\n');
                                                     match result {
                                                         EvalResult::Omen(b) => match b {

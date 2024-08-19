@@ -1,5 +1,5 @@
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
-COMMENT    = _{ line_comment | block_comment }
+COMMENT    =  { line_comment | block_comment }
 
 line_comment  = _{ "//" ~ (!"\n" ~ ANY)* }
 block_comment = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
@@ -10,7 +10,7 @@ block      = { "{" ~ statement* ~ "}" ~ ";" }
 
 forge_var  = { "forge" ~ morph? ~ identifier ~ ":" ~ type ~ "=" ~ expression }
 assignment = { identifier ~ assignment_op ~ expression }
-unveil     = { "unveil" ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
+unveil     = { "unveil" ~ "(" ~ expression ~ ("," ~ expression)* ~ ")" }
 reveal     = { "reveal" ~ expression* }
 
 oracle_expr             = { "oracle" ~ oracle_conditional? ~ "{" ~ oracle_branch* ~ "}" }

@@ -58,6 +58,7 @@ pub fn display_error_with_source(script: &str, line_info: Option<LineInfo>, erro
 
 pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalError> {
     match ast {
+        AST::Statement(node, _line_info) => evaluate(node, env),
         AST::Omen(b, _line_info) => Ok(EvalResult::Omen(*b)),
         AST::Arcana(n, _line_info) => Ok(EvalResult::Arcana(*n)),
         AST::Aether(n, _line_info) => Ok(EvalResult::Aether(*n)),
@@ -73,46 +74,38 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 line_info.clone(),
             )),
         },
-        AST::Subtract(left, right, line_info) => {
-            match (evaluate(left, env)?, evaluate(right, env)?) {
-                (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l - r)),
-                (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l - r)),
-                _ => Err(EvalError::InvalidOperation(
-                    "Subtract operation requires either two Arcana or two Aether!".to_string(),
-                    line_info.clone(),
-                )),
-            }
-        }
-        AST::Multiply(left, right, line_info) => {
-            match (evaluate(left, env)?, evaluate(right, env)?) {
-                (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l * r)),
-                (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l * r)),
-                _ => Err(EvalError::InvalidOperation(
-                    "Multiply operation requires either two Arcana or two Aether!".to_string(),
-                    line_info.clone(),
-                )),
-            }
-        }
-        AST::Divide(left, right, line_info) => {
-            match (evaluate(left, env)?, evaluate(right, env)?) {
-                (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l / r)),
-                (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l / r)),
-                _ => Err(EvalError::InvalidOperation(
-                    "Divide operation requires either two Arcana or two Aether!".to_string(),
-                    line_info.clone(),
-                )),
-            }
-        }
-        AST::Modulo(left, right, line_info) => {
-            match (evaluate(left, env)?, evaluate(right, env)?) {
-                (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l % r)),
-                (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l % r)),
-                _ => Err(EvalError::InvalidOperation(
-                    "Modulo operation requires either two Arcana or two Aether!".to_string(),
-                    line_info.clone(),
-                )),
-            }
-        }
+        AST::Sub(left, right, line_info) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l - r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l - r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Subtract operation requires either two Arcana or two Aether!".to_string(),
+                line_info.clone(),
+            )),
+        },
+        AST::Mul(left, right, line_info) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l * r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l * r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Multiply operation requires either two Arcana or two Aether!".to_string(),
+                line_info.clone(),
+            )),
+        },
+        AST::Div(left, right, line_info) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l / r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l / r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Divide operation requires either two Arcana or two Aether!".to_string(),
+                line_info.clone(),
+            )),
+        },
+        AST::Mod(left, right, line_info) => match (evaluate(left, env)?, evaluate(right, env)?) {
+            (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l % r)),
+            (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l % r)),
+            _ => Err(EvalError::InvalidOperation(
+                "Modulo operation requires either two Arcana or two Aether!".to_string(),
+                line_info.clone(),
+            )),
+        },
         AST::PowArcana(left, right, line_info) => {
             match (evaluate(left, env)?, evaluate(right, env)?) {
                 (EvalResult::Arcana(l), EvalResult::Arcana(r)) => {
@@ -322,8 +315,18 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                             line_info.clone(),
                         )
                     }
-                    (EvalResult::Rune(v), _, AssignmentOp::Assign) => {
-                        env.update_var(name, Value::Rune(v), Type::Rune, line_info.clone())
+                    (EvalResult::Rune(v), Value::Rune(current), op) => {
+                        let new_value = match op {
+                            AssignmentOp::AddAssign => format!("{}{}", current, v),
+                            AssignmentOp::Assign => v,
+                            _ => {
+                                return Err(EvalError::InvalidOperation(
+                                    format!("Unsupported operation for variable {}", name),
+                                    line_info.clone(),
+                                ))
+                            }
+                        };
+                        env.update_var(name, Value::Rune(new_value), Type::Rune, line_info.clone())
                     }
                     (EvalResult::Omen(v), _, AssignmentOp::Assign) => {
                         env.update_var(name, Value::Omen(v), Type::Omen, line_info.clone())
@@ -574,6 +577,9 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
         }
         AST::OracleDontCareItem(_line_info) => {
             Ok(EvalResult::Omen(true)) // ワイルドカードは常に真
+        }
+        AST::Comment(_, _) => {
+            Ok(EvalResult::Abyss) // コメントは何もしない
         }
     }
 }

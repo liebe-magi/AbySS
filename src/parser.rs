@@ -20,7 +20,11 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
     let line_info = Some(LineInfo::from_span(&pair.as_span())); // 行・列情報を取得
 
     match pair.as_rule() {
-        Rule::statement => build_ast(pair.into_inner().next().unwrap()),
+        Rule::statement => {
+            let mut inner = pair.into_inner();
+            let expression = build_ast(inner.next().unwrap())?;
+            Ok(AST::Statement(Box::new(expression), line_info))
+        }
         Rule::expression => build_ast(pair.into_inner().next().unwrap()),
         Rule::or_expr => {
             let mut inner = pair.into_inner();
@@ -115,7 +119,7 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                 let right = build_ast(inner.next().unwrap())?;
                 ast = match operator_pair.as_str() {
                     "+" => AST::Add(Box::new(ast), Box::new(right), line_info.clone()),
-                    "-" => AST::Subtract(Box::new(ast), Box::new(right), line_info.clone()),
+                    "-" => AST::Sub(Box::new(ast), Box::new(right), line_info.clone()),
                     _ => {
                         return Err(Error::new_from_span(
                             ErrorVariant::CustomError {
@@ -135,9 +139,9 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
             while let Some(operator_pair) = inner.next() {
                 let right = build_ast(inner.next().unwrap())?;
                 ast = match operator_pair.as_str() {
-                    "*" => AST::Multiply(Box::new(ast), Box::new(right), line_info.clone()),
-                    "/" => AST::Divide(Box::new(ast), Box::new(right), line_info.clone()),
-                    "%" => AST::Modulo(Box::new(ast), Box::new(right), line_info.clone()),
+                    "*" => AST::Mul(Box::new(ast), Box::new(right), line_info.clone()),
+                    "/" => AST::Div(Box::new(ast), Box::new(right), line_info.clone()),
+                    "%" => AST::Mod(Box::new(ast), Box::new(right), line_info.clone()),
                     _ => {
                         return Err(Error::new_from_span(
                             ErrorVariant::CustomError {
@@ -398,6 +402,10 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                 statements.push(statement);
             }
             Ok(AST::Block(statements, line_info))
+        }
+        Rule::COMMENT => {
+            let comment = pair.as_str().to_string();
+            Ok(AST::Comment(comment, line_info))
         }
         _ => Err(Error::new_from_span(
             ErrorVariant::CustomError {
