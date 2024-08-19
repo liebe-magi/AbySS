@@ -11,16 +11,18 @@ block      = { "{" ~ statement* ~ "}" ~ ";" }
 forge_var  = { "forge" ~ morph? ~ identifier ~ ":" ~ type ~ "=" ~ expression }
 assignment = { identifier ~ assignment_op ~ expression }
 unveil     = { "unveil" ~ "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
-reveal     = { "reveal" ~ "(" ~ expression ~ ")" }
+reveal     = { "reveal" ~ expression* }
 
 oracle_expr             = { "oracle" ~ oracle_conditional? ~ "{" ~ oracle_branch* ~ "}" }
 oracle_conditional      = { "(" ~ (conditional_assignments | expressions) ~ ")" }
 conditional_assignments = { conditional_assignment ~ ("," ~ conditional_assignment)* }
 conditional_assignment  = { identifier ~ "=" ~ expression }
 
-oracle_branch   = { pattern ~ "=>" ~ (block | statement) }
-pattern         = { "(" ~ expressions ~ ")" | default_pattern }
-default_pattern = { "_" }
+oracle_branch = { pattern ~ "=>" ~ (block | statement) }
+pattern       = { "(" ~ pattern_elements ~ ")" | "_" }
+
+pattern_elements = { pattern_element ~ ("," ~ pattern_element)* }
+pattern_element  = { expression | "_" }
 
 identifier = @{ ASCII_ALPHANUMERIC+ }
 type       =  { "omen" | "aether" | "arcana" | "rune" }

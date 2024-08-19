@@ -58,7 +58,8 @@ pub enum AST {
         branches: Vec<OracleBranch>,
         line_info: Option<LineInfo>,
     },
-    OracleDefaultBranch(Option<LineInfo>), // Block(Vec<AST>, Option<LineInfo>),
+    OracleDontCareItem(Option<LineInfo>),
+    Block(Vec<AST>, Option<LineInfo>),
 }
 
 #[derive(Debug, Clone)]

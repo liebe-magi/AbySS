@@ -33,16 +33,16 @@ oracle (a = 3, b = 2) {
 };
 
 // xが正の場合、xを表示する、xが負の場合、xを反転して表示する
-forge x: arcana = -5;
+forge x: arcana = -10;
 forge y: arcana = oracle (x > 0) {
     (boon) => reveal(x);
     (hex) => {
-        forge z: arcana = x * (-1);
-        oracle {
-            (z > 0) => unveil("z is positive");
-            (z < 0) => unveil("z is negative");
-            _ => unveil("z is zero");
+        forge z: arcana = x + 5;
+        reveal oracle (z > 0) {
+            (boon) => z;
+            (hex) => -999;
         };
-        reveal(z);
+        unveil("Not displayed");
     };
 };
+unveil(y);

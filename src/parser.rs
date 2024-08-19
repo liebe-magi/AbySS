@@ -303,15 +303,6 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             let expression = build_ast(inner.next().unwrap(), symbol_table)?;
             Ok(AST::Reveal(Box::new(expression), line_info))
         }
-        // Rule::block => {
-        //     let mut statements = Vec::new();
-        //     let inner = pair.into_inner();
-        //     for statement_pair in inner {
-        //         let statement = build_ast(statement_pair, symbol_table)?;
-        //         statements.push(statement);
-        //     }
-        //     Ok(AST::Block(statements, line_info))
-        // }
         Rule::oracle_expr => {
             let mut inner = pair.into_inner();
             let mut conditionals = Vec::new();
@@ -351,28 +342,8 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                 let branch_span = branch_pair.as_span();
                 let mut branch_inner = branch_pair.into_inner();
 
-                let rule = branch_inner
-                    .peek()
-                    .unwrap()
-                    .into_inner()
-                    .next()
-                    .unwrap()
-                    .as_rule();
-                if rule == Rule::expressions {
-                    let mut expr_pairs = branch_inner.next().unwrap().into_inner();
-                    let exprs = expr_pairs.next().unwrap().into_inner();
-                    let mut pats = vec![];
-                    for expr in exprs {
-                        let pat_ast = build_ast(expr, symbol_table)?;
-                        pats.push(pat_ast);
-                    }
-                    let body_ast = build_ast(branch_inner.next().unwrap(), symbol_table)?;
-                    branches.push(OracleBranch {
-                        pattern: pats,
-                        body: Box::new(body_ast),
-                        line_info: Some(LineInfo::from_span(&branch_span)),
-                    });
-                } else {
+                if branch_inner.peek().unwrap().as_span().as_str() == "_" {
+                    // default branch
                     branch_inner.next(); // branch_innerを読み飛ばす
                     let body_ast = if let Some(body) = branch_inner.next() {
                         build_ast(body, symbol_table)?
@@ -384,12 +355,34 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                             branch_span,
                         ));
                     };
-
                     branches.push(OracleBranch {
                         pattern: Vec::new(),
                         body: Box::new(body_ast),
                         line_info: Some(LineInfo::from_span(&branch_span)),
                     });
+                } else {
+                    let rule = branch_inner
+                        .peek()
+                        .unwrap()
+                        .into_inner()
+                        .next()
+                        .unwrap()
+                        .as_rule();
+                    if rule == Rule::pattern_elements {
+                        let mut expr_pairs = branch_inner.next().unwrap().into_inner();
+                        let exprs = expr_pairs.next().unwrap().into_inner();
+                        let mut pats = vec![];
+                        for expr in exprs {
+                            let pat_ast = build_ast(expr, symbol_table)?;
+                            pats.push(pat_ast);
+                        }
+                        let body_ast = build_ast(branch_inner.next().unwrap(), symbol_table)?;
+                        branches.push(OracleBranch {
+                            pattern: pats,
+                            body: Box::new(body_ast),
+                            line_info: Some(LineInfo::from_span(&branch_span)),
+                        });
+                    }
                 }
             }
             Ok(AST::Oracle {
@@ -400,7 +393,22 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             })
         }
         Rule::pattern => build_ast(pair.into_inner().next().unwrap(), symbol_table),
-        Rule::default_pattern => Ok(AST::OracleDefaultBranch(line_info)),
+        Rule::pattern_element => {
+            if pair.as_span().as_str() == "_" {
+                Ok(AST::OracleDontCareItem(line_info))
+            } else {
+                Ok(build_ast(pair.into_inner().next().unwrap(), symbol_table)?)
+            }
+        }
+        Rule::block => {
+            let mut statements = Vec::new();
+            let inner = pair.into_inner();
+            for statement_pair in inner {
+                let statement = build_ast(statement_pair, symbol_table)?;
+                statements.push(statement);
+            }
+            Ok(AST::Block(statements, line_info))
+        }
         _ => Err(Error::new_from_span(
             ErrorVariant::CustomError {
                 message: format!("Unexpected rule: {:?}", pair.as_rule()),

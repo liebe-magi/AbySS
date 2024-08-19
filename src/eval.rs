@@ -486,6 +486,10 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                     // パターンマッチング
                     let mut matched = true;
                     for (idx, pattern) in branch.pattern.iter().enumerate() {
+                        // patternがOracleDontCareItemの場合は条件を満たす
+                        if let AST::OracleDontCareItem(_) = pattern {
+                            continue;
+                        }
                         let pattern_result = evaluate(pattern, env)?;
                         let conditional_result = evaluate(&conditionals[idx].expression, env)?;
 
@@ -552,10 +556,24 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 line_info.clone(),
             ))
         }
-        AST::OracleDefaultBranch(_line_info) => Ok(EvalResult::Omen(true)),
         AST::Reveal(expr, _line_info) => {
             let result = evaluate(expr, env)?;
             Ok(EvalResult::Revealed(Box::new(result)))
+        }
+        AST::Block(statements, _line_info) => {
+            let mut last_result = EvalResult::Abyss;
+            for statement in statements {
+                let result = evaluate(statement, env)?;
+
+                if let EvalResult::Revealed(revealed) = result {
+                    return Ok(*revealed);
+                }
+                last_result = result;
+            }
+            Ok(last_result)
+        }
+        AST::OracleDontCareItem(_line_info) => {
+            Ok(EvalResult::Omen(true)) // ワイルドカードは常に真
         }
     }
 }
