@@ -95,11 +95,3 @@ pub enum Value {
     Aether(f64),
     Rune(String),
 }
-
-#[derive(Debug)]
-pub struct SymbolInfo {
-    pub var_type: Type,
-    pub is_morph: bool,
-}
-
-pub type SymbolTable = HashMap<String, SymbolInfo>;

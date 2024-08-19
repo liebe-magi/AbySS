@@ -4,7 +4,6 @@ use pest::Parser;
 use pest_derive::Parser;
 
 use crate::ast::{AssignmentOp, ConditionalAssignment, LineInfo, OracleBranch, Type, AST};
-use crate::env::{SymbolInfo, SymbolTable};
 
 #[derive(Parser)]
 #[grammar = "abyss.pest"] // 文法ファイルを指定
@@ -17,17 +16,17 @@ pub fn parse(input: &str) -> Result<Pair<Rule>, Error<Rule>> {
     }
 }
 
-pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST, Error<Rule>> {
+pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
     let line_info = Some(LineInfo::from_span(&pair.as_span())); // 行・列情報を取得
 
     match pair.as_rule() {
-        Rule::statement => build_ast(pair.into_inner().next().unwrap(), symbol_table),
-        Rule::expression => build_ast(pair.into_inner().next().unwrap(), symbol_table),
+        Rule::statement => build_ast(pair.into_inner().next().unwrap()),
+        Rule::expression => build_ast(pair.into_inner().next().unwrap()),
         Rule::or_expr => {
             let mut inner = pair.into_inner();
-            let left = build_ast(inner.next().unwrap(), symbol_table)?;
+            let left = build_ast(inner.next().unwrap())?;
             if let Some(operator_pair) = inner.next() {
-                let right = build_ast(inner.next().unwrap(), symbol_table)?;
+                let right = build_ast(inner.next().unwrap())?;
                 match operator_pair.as_str() {
                     "||" => Ok(AST::LogicalOr(Box::new(left), Box::new(right), line_info)),
                     _ => Err(Error::new_from_span(
@@ -43,9 +42,9 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         }
         Rule::and_expr => {
             let mut inner = pair.into_inner();
-            let left = build_ast(inner.next().unwrap(), symbol_table)?;
+            let left = build_ast(inner.next().unwrap())?;
             if let Some(operator_pair) = inner.next() {
-                let right = build_ast(inner.next().unwrap(), symbol_table)?;
+                let right = build_ast(inner.next().unwrap())?;
                 match operator_pair.as_str() {
                     "&&" => Ok(AST::LogicalAnd(Box::new(left), Box::new(right), line_info)),
                     _ => Err(Error::new_from_span(
@@ -69,7 +68,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                 false
             };
 
-            let expr = build_ast(inner.next().unwrap(), symbol_table)?;
+            let expr = build_ast(inner.next().unwrap())?;
 
             if exist_not_op {
                 Ok(AST::LogicalNot(Box::new(expr), line_info))
@@ -79,9 +78,9 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         }
         Rule::comp_expr => {
             let mut inner = pair.into_inner();
-            let left = build_ast(inner.next().unwrap(), symbol_table)?;
+            let left = build_ast(inner.next().unwrap())?;
             if let Some(operator_pair) = inner.next() {
-                let right = build_ast(inner.next().unwrap(), symbol_table)?;
+                let right = build_ast(inner.next().unwrap())?;
                 match operator_pair.as_str() {
                     "==" => Ok(AST::Equal(Box::new(left), Box::new(right), line_info)),
                     "!=" => Ok(AST::NotEqual(Box::new(left), Box::new(right), line_info)),
@@ -110,10 +109,10 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         }
         Rule::add_expr => {
             let mut inner = pair.into_inner();
-            let mut ast = build_ast(inner.next().unwrap(), symbol_table)?;
+            let mut ast = build_ast(inner.next().unwrap())?;
 
             while let Some(operator_pair) = inner.next() {
-                let right = build_ast(inner.next().unwrap(), symbol_table)?;
+                let right = build_ast(inner.next().unwrap())?;
                 ast = match operator_pair.as_str() {
                     "+" => AST::Add(Box::new(ast), Box::new(right), line_info.clone()),
                     "-" => AST::Subtract(Box::new(ast), Box::new(right), line_info.clone()),
@@ -131,10 +130,10 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         }
         Rule::mul_expr => {
             let mut inner = pair.into_inner();
-            let mut ast = build_ast(inner.next().unwrap(), symbol_table)?;
+            let mut ast = build_ast(inner.next().unwrap())?;
 
             while let Some(operator_pair) = inner.next() {
-                let right = build_ast(inner.next().unwrap(), symbol_table)?;
+                let right = build_ast(inner.next().unwrap())?;
                 ast = match operator_pair.as_str() {
                     "*" => AST::Multiply(Box::new(ast), Box::new(right), line_info.clone()),
                     "/" => AST::Divide(Box::new(ast), Box::new(right), line_info.clone()),
@@ -153,10 +152,10 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         }
         Rule::pow_expr => {
             let mut inner = pair.into_inner();
-            let mut ast = build_ast(inner.next().unwrap(), symbol_table)?;
+            let mut ast = build_ast(inner.next().unwrap())?;
 
             while let Some(operator_pair) = inner.next() {
-                let right = build_ast(inner.next().unwrap(), symbol_table)?;
+                let right = build_ast(inner.next().unwrap())?;
                 ast = match operator_pair.as_str() {
                     "^" => AST::PowArcana(Box::new(ast), Box::new(right), line_info.clone()),
                     "**" => AST::PowAether(Box::new(ast), Box::new(right), line_info.clone()),
@@ -172,7 +171,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
             }
             Ok(ast)
         }
-        Rule::factor => build_ast(pair.into_inner().next().unwrap(), symbol_table),
+        Rule::factor => build_ast(pair.into_inner().next().unwrap()),
         Rule::omen => {
             let value = pair.as_str();
             match value {
@@ -223,15 +222,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                 ))?,
             };
 
-            let value = build_ast(inner.next().unwrap(), symbol_table)?;
-
-            symbol_table.insert(
-                var_name.clone(),
-                SymbolInfo {
-                    var_type: var_type.clone(),
-                    is_morph,
-                },
-            );
+            let value = build_ast(inner.next().unwrap())?;
 
             Ok(AST::VarAssign {
                 name: var_name,
@@ -261,7 +252,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                     span,
                 ))?,
             };
-            let value = build_ast(inner.next().unwrap(), symbol_table)?;
+            let value = build_ast(inner.next().unwrap())?;
 
             Ok(AST::Assignment {
                 name: var_name,
@@ -276,14 +267,13 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         }
         Rule::unveil => {
             let inner = pair.into_inner();
-            let args: Result<Vec<AST>, Error<Rule>> =
-                inner.map(|p| build_ast(p, symbol_table)).collect();
+            let args: Result<Vec<AST>, Error<Rule>> = inner.map(|p| build_ast(p)).collect();
             Ok(AST::Unveil(args?, line_info))
         }
         Rule::trans_expr => {
             let span = pair.as_span(); // `pair`の`span`を取得して保持しておく
             let mut inner = pair.into_inner();
-            let expr = build_ast(inner.next().unwrap(), symbol_table)?;
+            let expr = build_ast(inner.next().unwrap())?;
             let target_type = match inner.next().unwrap().as_str() {
                 "arcana" => Type::Arcana,
                 "aether" => Type::Aether,
@@ -300,7 +290,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
         }
         Rule::reveal => {
             let mut inner = pair.into_inner();
-            let expression = build_ast(inner.next().unwrap(), symbol_table)?;
+            let expression = build_ast(inner.next().unwrap())?;
             Ok(AST::Reveal(Box::new(expression), line_info))
         }
         Rule::oracle_expr => {
@@ -318,7 +308,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                         if condition.as_rule() == Rule::conditional_assignment {
                             let mut inner_pairs = condition.into_inner();
                             let identifier = inner_pairs.next().unwrap().as_str().to_string();
-                            let expression = build_ast(inner_pairs.next().unwrap(), symbol_table)?;
+                            let expression = build_ast(inner_pairs.next().unwrap())?;
                             conditionals.push(ConditionalAssignment {
                                 variable: identifier,
                                 expression: Box::new(expression),
@@ -327,7 +317,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                         } else {
                             is_match = true;
                             let mut inner_pairs = condition.into_inner();
-                            let expression = build_ast(inner_pairs.next().unwrap(), symbol_table)?;
+                            let expression = build_ast(inner_pairs.next().unwrap())?;
                             conditionals.push(ConditionalAssignment {
                                 variable: format!("__match_{}", idx),
                                 expression: Box::new(expression),
@@ -346,7 +336,7 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                     // default branch
                     branch_inner.next(); // branch_innerを読み飛ばす
                     let body_ast = if let Some(body) = branch_inner.next() {
-                        build_ast(body, symbol_table)?
+                        build_ast(body)?
                     } else {
                         return Err(Error::new_from_span(
                             ErrorVariant::CustomError {
@@ -373,10 +363,10 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                         let exprs = expr_pairs.next().unwrap().into_inner();
                         let mut pats = vec![];
                         for expr in exprs {
-                            let pat_ast = build_ast(expr, symbol_table)?;
+                            let pat_ast = build_ast(expr)?;
                             pats.push(pat_ast);
                         }
-                        let body_ast = build_ast(branch_inner.next().unwrap(), symbol_table)?;
+                        let body_ast = build_ast(branch_inner.next().unwrap())?;
                         branches.push(OracleBranch {
                             pattern: pats,
                             body: Box::new(body_ast),
@@ -392,19 +382,19 @@ pub fn build_ast(pair: Pair<Rule>, symbol_table: &mut SymbolTable) -> Result<AST
                 line_info,
             })
         }
-        Rule::pattern => build_ast(pair.into_inner().next().unwrap(), symbol_table),
+        Rule::pattern => build_ast(pair.into_inner().next().unwrap()),
         Rule::pattern_element => {
             if pair.as_span().as_str() == "_" {
                 Ok(AST::OracleDontCareItem(line_info))
             } else {
-                Ok(build_ast(pair.into_inner().next().unwrap(), symbol_table)?)
+                Ok(build_ast(pair.into_inner().next().unwrap())?)
             }
         }
         Rule::block => {
             let mut statements = Vec::new();
             let inner = pair.into_inner();
             for statement_pair in inner {
-                let statement = build_ast(statement_pair, symbol_table)?;
+                let statement = build_ast(statement_pair)?;
                 statements.push(statement);
             }
             Ok(AST::Block(statements, line_info))

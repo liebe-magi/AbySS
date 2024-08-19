@@ -1,6 +1,7 @@
 use abyss_lang::{
-    env::{Environment, SymbolTable},
+    env::Environment,
     eval::{display_error_with_source, evaluate, EvalError, EvalResult},
+    format::format_ast,
     parser::{build_ast, parse, Rule},
 };
 use clap::{Parser, Subcommand};
@@ -35,6 +36,11 @@ enum Commands {
         #[arg(long)]
         debug: bool,
     },
+    /// Format the input script file
+    Align {
+        /// The path to the script file
+        script: String,
+    },
 }
 
 fn setup_abyss_directory() -> PathBuf {
@@ -55,7 +61,6 @@ fn get_history_file_path() -> PathBuf {
 
 fn execute_script(script: &str) {
     // 環境を初期化
-    let mut st = SymbolTable::new();
     let mut env = Environment::new();
 
     // スクリプトをパースして評価
@@ -63,7 +68,7 @@ fn execute_script(script: &str) {
         Ok(pair) => {
             for inner_pair in pair.into_inner() {
                 if inner_pair.as_rule() != Rule::EOI {
-                    match build_ast(inner_pair, &mut st) {
+                    match build_ast(inner_pair) {
                         Ok(ast) => match evaluate(&ast, &mut env) {
                             Ok(_) => {}
                             Err(e) => {
@@ -87,16 +92,36 @@ fn execute_script(script: &str) {
                 }
             }
         }
-        Err(e) => eprintln!("Error: {}", e),
+        Err(e) => panic!("Error: {}", e),
+    }
+}
+
+fn execute_format(script: &str) {
+    // スクリプトをパースして評価
+    match parse(script) {
+        Ok(pair) => {
+            for inner_pair in pair.into_inner() {
+                if inner_pair.as_rule() != Rule::EOI {
+                    match build_ast(inner_pair) {
+                        Ok(ast) => {
+                            let formatted_code = format_ast(&ast, 0) + ";";
+                            println!("{}", formatted_code);
+                        }
+                        Err(e) => panic!("Error: {}", e),
+                    }
+                }
+            }
+        }
+        Err(e) => panic!("Error: {}", e),
     }
 }
 
 fn start_interpreter(debug: bool) {
     println!("Starting AbySS interpreter...");
-    println!("Type 'exit' or press Ctrl+D to exit the interpreter.");
+    println!("Type 'exit' or press Ctrl+D to exit the interpreter.\n");
 
+    let mut current_session_code = String::new();
     let mut current_statement = String::new();
-    let mut st = SymbolTable::new();
     let mut env = Environment::new();
 
     // rustylineのEditorを作成し、履歴を有効化
@@ -106,12 +131,37 @@ fn start_interpreter(debug: bool) {
     let _ = rl.set_max_history_size(1000);
 
     loop {
-        let readline = rl.readline(&"\nAbySS> ".blue().bold().to_string());
+        let prompt = format!(
+            "AbySS > {}",
+            "  ".repeat(
+                current_statement.matches('{').count() - current_statement.matches('}').count()
+            ),
+        )
+        .blue()
+        .bold(); // 青の太文字で表示
+        let readline = rl.readline(&prompt.to_string());
 
         match readline {
             Ok(line) => {
-                if line.trim() == "exit" {
-                    break; // "exit" が入力されたらインタープリタ終了
+                match line.trim() {
+                    "exit" => {
+                        println!("EXIT: Exiting interpreter...");
+                        break;
+                    }
+                    "clear" => {
+                        current_statement.clear();
+                        continue;
+                    }
+                    "show" => {
+                        println!("=== Current Session Code ===");
+
+                        println!("{}", &current_session_code);
+
+                        println!("============================");
+                        current_statement.clear();
+                        continue;
+                    }
+                    _ => {}
                 }
 
                 match rl.add_history_entry(line.as_str()) {
@@ -122,35 +172,43 @@ fn start_interpreter(debug: bool) {
                 // 文を結合
                 current_statement.push_str(&line);
 
-                // 文の末尾がセミコロンで終わっていれば、文をパースして評価
-                if current_statement.ends_with(';') {
+                // ブロック深度に基づいてインタープリタの動作を調整
+                let open_braces = current_statement.matches('{').count();
+                let close_braces = current_statement.matches('}').count();
+
+                if open_braces == close_braces && current_statement.ends_with(';') {
+                    // ブロックが閉じた状態でセミコロンで終わっていれば、文をパースして評価
                     match parse(&current_statement) {
                         Ok(pair) => {
                             for inner_pair in pair.into_inner() {
                                 if inner_pair.as_rule() != Rule::EOI {
-                                    match build_ast(inner_pair, &mut st) {
+                                    match build_ast(inner_pair) {
                                         Ok(ast) => {
                                             if debug {
                                                 println!("{}", format!("AST: {:?}", ast).yellow());
                                             }
                                             match evaluate(&ast, &mut env) {
-                                                Ok(result) => match result {
-                                                    EvalResult::Omen(b) => match b {
-                                                        true => println!("{}", "boon".green()),
-                                                        false => println!("{}", "hex".green()),
-                                                    },
-                                                    EvalResult::Arcana(n) => {
-                                                        println!("{}", format!("{}", n).green())
+                                                Ok(result) => {
+                                                    current_session_code
+                                                        .push_str(&current_statement);
+                                                    current_session_code.push('\n');
+                                                    match result {
+                                                        EvalResult::Omen(b) => match b {
+                                                            true => println!("{}", "boon".green()),
+                                                            false => println!("{}", "hex".green()),
+                                                        },
+                                                        EvalResult::Arcana(n) => {
+                                                            println!("{}", format!("{}", n).green())
+                                                        }
+                                                        EvalResult::Aether(n) => {
+                                                            println!("{}", format!("{}", n).green())
+                                                        }
+                                                        EvalResult::Rune(s) => {
+                                                            println!("{}", s.green())
+                                                        }
+                                                        _ => {}
                                                     }
-                                                    EvalResult::Aether(n) => {
-                                                        println!("{}", format!("{}", n).green())
-                                                    }
-                                                    EvalResult::Rune(s) => {
-                                                        println!("{}", s.green())
-                                                    }
-                                                    EvalResult::Abyss => {}
-                                                    _ => {}
-                                                },
+                                                }
                                                 Err(e) => {
                                                     println!("{}", format!("Error: {}", e).red())
                                                 }
@@ -167,11 +225,13 @@ fn start_interpreter(debug: bool) {
                 }
             }
             Err(ReadlineError::Interrupted) => {
-                println!("CTRL-C");
-                break;
+                println!("CTRL-C: Restarting interpreter...");
+                current_session_code.clear();
+                current_statement.clear();
+                env = Environment::new();
             }
             Err(ReadlineError::Eof) => {
-                println!("CTRL-D");
+                println!("CTRL-D: Exiting interpreter...");
                 break;
             }
             Err(err) => {
@@ -183,7 +243,6 @@ fn start_interpreter(debug: bool) {
 
     rl.save_history(&history_path)
         .expect("Error: Failed to save history");
-    println!("\nExiting AbySS interpreter...");
 }
 
 fn main() {
@@ -201,6 +260,14 @@ fn main() {
         Commands::Cast { debug } => {
             // インタープリタモードの開始
             start_interpreter(*debug);
+        }
+        Commands::Align { script } => {
+            // .abyファイルを読み込んで実行
+            if let Ok(contents) = fs::read_to_string(script) {
+                execute_format(&contents);
+            } else {
+                eprintln!("Error: Could not read the script file.");
+            }
         }
     }
 }
