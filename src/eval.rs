@@ -581,5 +581,9 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
         AST::Comment(_, _) => {
             Ok(EvalResult::Abyss) // コメントは何もしない
         }
+        _ => Err(EvalError::InvalidOperation(
+            format!("Unsupported operation: {:?}", ast),
+            None,
+        )),
     }
 }

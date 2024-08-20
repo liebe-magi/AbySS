@@ -62,6 +62,18 @@ pub enum AST {
     OracleDontCareItem(Option<LineInfo>),
     Block(Vec<AST>, Option<LineInfo>),
     Comment(String, Option<LineInfo>),
+    Orbit {
+        params: Vec<AST>,
+        body: Box<AST>,
+        line_info: Option<LineInfo>,
+    },
+    OrbitParam {
+        name: String,
+        start: Box<AST>,
+        end: Box<AST>,
+        op: String,
+        line_info: Option<LineInfo>,
+    },
 }
 
 #[derive(Debug, Clone)]

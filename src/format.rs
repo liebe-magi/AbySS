@@ -216,5 +216,6 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
         }
         AST::OracleDontCareItem(_) => format!("_"),
         AST::Comment(text, _) => text.clone(),
+        _ => "".to_string(),
     }
 }

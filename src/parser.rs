@@ -403,6 +403,38 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
             }
             Ok(AST::Block(statements, line_info))
         }
+        Rule::orbit => {
+            let mut inner = pair.into_inner();
+            let mut params = Vec::new();
+            if inner.peek().unwrap().as_rule() == Rule::orbit_params {
+                let param_pairs = inner.next().unwrap().into_inner();
+                for param_pair in param_pairs {
+                    let param = build_ast(param_pair)?;
+                    params.push(param);
+                }
+            }
+            println!("params: {:?}", params);
+            Ok(AST::Orbit {
+                params,
+                body: Box::new(build_ast(inner.next().unwrap())?),
+                line_info,
+            })
+        }
+        Rule::orbit_param => {
+            let mut inner = pair.into_inner();
+            let name = inner.next().unwrap().as_str().to_string();
+            let mut range_expr = inner.next().unwrap().into_inner();
+            let start = build_ast(range_expr.next().unwrap())?;
+            let op = range_expr.next().unwrap().as_str();
+            let end = build_ast(range_expr.next().unwrap())?;
+            Ok(AST::OrbitParam {
+                name,
+                start: Box::new(start),
+                end: Box::new(end),
+                op: op.to_string(),
+                line_info,
+            })
+        }
         Rule::COMMENT => {
             let comment = pair.as_str().to_string();
             Ok(AST::Comment(comment, line_info))
