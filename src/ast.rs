@@ -56,7 +56,12 @@ pub enum AST {
     Oracle {
         is_match: bool,
         conditionals: Vec<ConditionalAssignment>,
-        branches: Vec<OracleBranch>,
+        branches: Vec<AST>,
+        line_info: Option<LineInfo>,
+    },
+    OracleBranch {
+        pattern: Vec<AST>,
+        body: Box<AST>,
         line_info: Option<LineInfo>,
     },
     OracleDontCareItem(Option<LineInfo>),
@@ -74,6 +79,8 @@ pub enum AST {
         op: String,
         line_info: Option<LineInfo>,
     },
+    Resume(Option<String>, Option<LineInfo>),
+    Eject(Option<String>, Option<LineInfo>),
 }
 
 #[derive(Debug, Clone)]
@@ -83,12 +90,6 @@ pub struct ConditionalAssignment {
     pub line_info: Option<LineInfo>,
 }
 
-#[derive(Debug, Clone)]
-pub struct OracleBranch {
-    pub pattern: Vec<AST>,
-    pub body: Box<AST>,
-    pub line_info: Option<LineInfo>,
-}
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Arcana,

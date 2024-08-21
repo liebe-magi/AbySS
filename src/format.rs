@@ -194,22 +194,29 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             }
             result.push_str(" {\n");
             for branch in branches {
-                let pattern = branch
-                    .pattern
-                    .iter()
-                    .map(|pat| format_ast(pat, indent_level + 1))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                result.push_str(&format!(
-                    "{}{} => {}\n",
-                    "  ".repeat(indent_level + 1),
-                    if pattern == "" {
-                        "_".to_string()
-                    } else {
-                        format!("({})", pattern)
-                    },
-                    format_ast(&branch.body, indent_level + 1).trim()
-                ));
+                // コメントノードの場合はスキップ
+                if let AST::Comment(text, _) = branch {
+                    result.push_str(&format!("{}{}\n", "  ".repeat(indent_level + 1), text));
+                    continue;
+                }
+
+                if let AST::OracleBranch { pattern, body, .. } = branch {
+                    let pattern = pattern
+                        .iter()
+                        .map(|pat| format_ast(pat, indent_level + 1))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    result.push_str(&format!(
+                        "{}{} => {}\n",
+                        "  ".repeat(indent_level + 1),
+                        if pattern == "" {
+                            "_".to_string()
+                        } else {
+                            format!("({})", pattern)
+                        },
+                        format_ast(&body, indent_level + 1).trim()
+                    ));
+                }
             }
             result.push_str(&format!("{}}}", indent));
             result

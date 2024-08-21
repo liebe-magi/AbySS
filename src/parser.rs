@@ -3,7 +3,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use pest_derive::Parser;
 
-use crate::ast::{AssignmentOp, ConditionalAssignment, LineInfo, OracleBranch, Type, AST};
+use crate::ast::{AssignmentOp, ConditionalAssignment, LineInfo, Type, AST};
 
 #[derive(Parser)]
 #[grammar = "abyss.pest"] // 文法ファイルを指定
@@ -334,10 +334,17 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
             // ブランチ部分の解析
             for branch_pair in inner {
                 let branch_span = branch_pair.as_span();
-                let mut branch_inner = branch_pair.into_inner();
 
+                // コメントの検出
+                if branch_pair.as_rule() == Rule::COMMENT {
+                    let comment_text = branch_pair.as_str().to_string();
+                    branches.push(AST::Comment(comment_text, line_info.clone()));
+                    continue; // 次のブランチに移動
+                }
+
+                let mut branch_inner = branch_pair.into_inner();
+                // デフォルトブランチの処理
                 if branch_inner.peek().unwrap().as_span().as_str() == "_" {
-                    // default branch
                     branch_inner.next(); // branch_innerを読み飛ばす
                     let body_ast = if let Some(body) = branch_inner.next() {
                         build_ast(body)?
@@ -349,7 +356,7 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                             branch_span,
                         ));
                     };
-                    branches.push(OracleBranch {
+                    branches.push(AST::OracleBranch {
                         pattern: Vec::new(),
                         body: Box::new(body_ast),
                         line_info: Some(LineInfo::from_span(&branch_span)),
@@ -371,7 +378,7 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                             pats.push(pat_ast);
                         }
                         let body_ast = build_ast(branch_inner.next().unwrap())?;
-                        branches.push(OracleBranch {
+                        branches.push(AST::OracleBranch {
                             pattern: pats,
                             body: Box::new(body_ast),
                             line_info: Some(LineInfo::from_span(&branch_span)),
@@ -413,7 +420,6 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                     params.push(param);
                 }
             }
-            println!("params: {:?}", params);
             Ok(AST::Orbit {
                 params,
                 body: Box::new(build_ast(inner.next().unwrap())?),
@@ -434,6 +440,25 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                 op: op.to_string(),
                 line_info,
             })
+        }
+        Rule::orbit_flow => {
+            let span = pair.as_span();
+            let mut inner = pair.into_inner();
+            let rule = inner.peek().unwrap().as_rule();
+            let identifier = match inner.next().unwrap().into_inner().next() {
+                Some(id) => Some(id.as_str().to_string()),
+                None => None,
+            };
+            match rule {
+                Rule::resume_expr => Ok(AST::Resume(identifier, line_info)),
+                Rule::eject_expr => Ok(AST::Eject(identifier, line_info)),
+                _ => Err(Error::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "Unexpected orbit flow".to_string(),
+                    },
+                    span,
+                )),
+            }
         }
         Rule::COMMENT => {
             let comment = pair.as_str().to_string();

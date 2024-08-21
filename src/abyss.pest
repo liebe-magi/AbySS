@@ -28,7 +28,7 @@ orbit        = { "orbit" ~ orbit_params? ~ block }
 orbit_params = { "(" ~ orbit_param ~ ("," ~ orbit_param)* ~ ")" }
 orbit_param  = { identifier ~ "=" ~ range_expr }
 range_expr   = { expression ~ range_op ~ expression }
-range_op     = { ".." | "..=" }
+range_op     = { "..=" | ".." }
 
 orbit_flow  = { resume_expr | eject_expr }
 resume_expr = { "resume" ~ identifier? }

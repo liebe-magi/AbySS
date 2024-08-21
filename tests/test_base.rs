@@ -13,7 +13,7 @@ pub fn test_base(input: &str) -> Result<Vec<EvalResult>, Box<dyn std::error::Err
                 if inner_pair.as_rule() != Rule::EOI {
                     match build_ast(inner_pair) {
                         Ok(ast) => {
-                            // println!("{:?}", ast);
+                            // println!("{:#?}", ast);
                             match evaluate(&ast, &mut env) {
                                 Ok(result) => {
                                     results.push(result);
@@ -23,7 +23,8 @@ pub fn test_base(input: &str) -> Result<Vec<EvalResult>, Box<dyn std::error::Err
                                     match &e {
                                         EvalError::UndefinedVariable(_, line_info)
                                         | EvalError::InvalidOperation(_, line_info)
-                                        | EvalError::NegativeExponent(line_info) => {
+                                        | EvalError::NegativeExponent(line_info)
+                                        | EvalError::TypeError(_, line_info) => {
                                             display_error_with_source(
                                                 input,
                                                 line_info.clone(),

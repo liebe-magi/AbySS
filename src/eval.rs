@@ -11,6 +11,8 @@ pub enum EvalResult {
     Rune(String),
     Abyss,
     Revealed(Box<EvalResult>),
+    Resume(Option<String>),
+    Eject(Option<String>),
 }
 
 #[derive(Debug)]
@@ -18,6 +20,7 @@ pub enum EvalError {
     UndefinedVariable(String, Option<LineInfo>),
     InvalidOperation(String, Option<LineInfo>),
     NegativeExponent(Option<LineInfo>),
+    TypeError(String, Option<LineInfo>),
 }
 
 impl fmt::Display for EvalError {
@@ -28,6 +31,7 @@ impl fmt::Display for EvalError {
             EvalError::NegativeExponent(_) => {
                 write!(f, "PowArcana operation requires a non-negative exponent!")
             }
+            EvalError::TypeError(var_type, _) => write!(f, "Type error: {}", var_type),
         }
     }
 }
@@ -482,82 +486,90 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
 
             // 分岐の評価処理
             for branch in branches {
-                let matched = if branch.pattern.is_empty() {
-                    // デフォルトブランチ
-                    true
-                } else if *is_match {
-                    // パターンマッチング
-                    let mut matched = true;
-                    for (idx, pattern) in branch.pattern.iter().enumerate() {
-                        // patternがOracleDontCareItemの場合は条件を満たす
-                        if let AST::OracleDontCareItem(_) = pattern {
-                            continue;
-                        }
-                        let pattern_result = evaluate(pattern, env)?;
-                        let conditional_result = evaluate(&conditionals[idx].expression, env)?;
+                // コメントノードの場合はスキップ
+                if let AST::Comment(_, _) = branch {
+                    continue;
+                }
 
-                        match (conditional_result, pattern_result) {
-                            (EvalResult::Arcana(cond_n), EvalResult::Arcana(pat_n)) => {
-                                if cond_n != pat_n {
-                                    matched = false;
-                                    break;
-                                }
+                if let AST::OracleBranch {
+                    pattern,
+                    body,
+                    line_info,
+                } = branch
+                {
+                    let matched = if pattern.is_empty() {
+                        // デフォルトブランチ
+                        true
+                    } else if *is_match {
+                        // パターンマッチング
+                        let mut matched = true;
+                        for (idx, pattern) in pattern.iter().enumerate() {
+                            // patternがOracleDontCareItemの場合は条件を満たす
+                            if let AST::OracleDontCareItem(_) = pattern {
+                                continue;
                             }
-                            (EvalResult::Aether(cond_n), EvalResult::Aether(pat_n)) => {
-                                if (cond_n - pat_n).abs() >= std::f64::EPSILON {
-                                    matched = false;
-                                    break;
+                            let pattern_result = evaluate(pattern, env)?;
+                            let conditional_result = evaluate(&conditionals[idx].expression, env)?;
+
+                            match (conditional_result, pattern_result) {
+                                (EvalResult::Arcana(cond_n), EvalResult::Arcana(pat_n)) => {
+                                    if cond_n != pat_n {
+                                        matched = false;
+                                        break;
+                                    }
                                 }
-                            }
-                            (EvalResult::Rune(cond_s), EvalResult::Rune(pat_s)) => {
-                                if cond_s != pat_s {
-                                    matched = false;
-                                    break;
+                                (EvalResult::Aether(cond_n), EvalResult::Aether(pat_n)) => {
+                                    if (cond_n - pat_n).abs() >= std::f64::EPSILON {
+                                        matched = false;
+                                        break;
+                                    }
                                 }
-                            }
-                            (EvalResult::Omen(cond_b), EvalResult::Omen(pat_b)) => {
-                                if cond_b != pat_b {
-                                    matched = false;
-                                    break;
+                                (EvalResult::Rune(cond_s), EvalResult::Rune(pat_s)) => {
+                                    if cond_s != pat_s {
+                                        matched = false;
+                                        break;
+                                    }
                                 }
-                            }
-                            _ => {
-                                return Err(EvalError::InvalidOperation(
-                                    "Oracle branch pattern type must match conditional type"
-                                        .to_string(),
-                                    line_info.clone(),
-                                ))
+                                (EvalResult::Omen(cond_b), EvalResult::Omen(pat_b)) => {
+                                    if cond_b != pat_b {
+                                        matched = false;
+                                        break;
+                                    }
+                                }
+                                _ => {
+                                    return Err(EvalError::InvalidOperation(
+                                        "Oracle branch pattern type must match conditional type"
+                                            .to_string(),
+                                        line_info.clone(),
+                                    ))
+                                }
                             }
                         }
-                    }
-                    matched
-                } else {
-                    // Omen型パターンマッチング
-                    branch
-                        .pattern
-                        .iter()
-                        .all(|pattern| matches!(evaluate(pattern, env), Ok(EvalResult::Omen(true))))
-                };
-
-                // パターンが一致したらブランチを評価して終了
-                if matched {
-                    let result = match evaluate(&branch.body, env) {
-                        Ok(result) => match result {
-                            EvalResult::Revealed(revealed) => *revealed,
-                            _ => result,
-                        },
-                        Err(e) => return Err(e),
+                        matched
+                    } else {
+                        // Omen型パターンマッチング
+                        pattern.iter().all(|pattern| {
+                            matches!(evaluate(pattern, env), Ok(EvalResult::Omen(true)))
+                        })
                     };
-                    env.pop_scope(); // スコープを終了
-                    return Ok(result);
+
+                    // パターンが一致したらブランチを評価して終了
+                    if matched {
+                        let result = match evaluate(&body, env) {
+                            Ok(result) => match result {
+                                EvalResult::Revealed(revealed) => *revealed,
+                                _ => result,
+                            },
+                            Err(e) => return Err(e),
+                        };
+                        env.pop_scope(); // スコープを終了
+                        return Ok(result);
+                    }
                 }
             }
 
             env.pop_scope(); // スコープを終了
-            Err(EvalError::InvalidOperation(
-                "No matching pattern found in oracle statement".to_string(),
-                line_info.clone(),
-            ))
+            Ok(EvalResult::Abyss)
         }
         AST::Reveal(expr, _line_info) => {
             let result = evaluate(expr, env)?;
@@ -568,9 +580,12 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             for statement in statements {
                 let result = evaluate(statement, env)?;
 
-                if let EvalResult::Revealed(revealed) = result {
-                    return Ok(*revealed);
+                match result {
+                    EvalResult::Revealed(revealed) => return Ok(*revealed),
+                    EvalResult::Resume(_) | EvalResult::Eject(_) => return Ok(result),
+                    _ => {}
                 }
+
                 last_result = result;
             }
             Ok(last_result)
@@ -578,6 +593,113 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
         AST::OracleDontCareItem(_line_info) => {
             Ok(EvalResult::Omen(true)) // ワイルドカードは常に真
         }
+        AST::Orbit {
+            params,
+            body,
+            line_info,
+        } => {
+            if params.is_empty() {
+                // パラメータがない場合、無限ループを実行
+                loop {
+                    env.push_scope(); // 新しいスコープを作成
+
+                    // ループ本体の評価
+                    let result = evaluate(body, env)?;
+
+                    match result {
+                        EvalResult::Resume(_) => continue,
+                        EvalResult::Eject(_) => break,
+                        _ => {}
+                    }
+
+                    env.pop_scope(); // スコープを終了
+                }
+
+                Ok(EvalResult::Abyss)
+            } else {
+                // 最初のパラメータを取り出し、それに対するループ処理を行う
+                if let AST::OrbitParam {
+                    name,
+                    start,
+                    end,
+                    op,
+                    ..
+                } = &params[0]
+                {
+                    let start_value = evaluate(start, env)?;
+                    let end_value = evaluate(end, env)?;
+
+                    // Arcana型である必要がある（整数型のループパラメータ）
+                    if let (EvalResult::Arcana(start_num), EvalResult::Arcana(end_num)) =
+                        (start_value, end_value)
+                    {
+                        let range = start_num..end_num + if op == ".." { 0 } else { 1 };
+
+                        for value in range {
+                            env.push_scope(); // 新しいスコープを作成
+
+                            // パラメータを環境に追加
+                            env.set_var(name.clone(), Value::Arcana(value), Type::Arcana, true);
+
+                            // 残りのパラメータで再帰的に処理を行う
+                            let remaining_params = params[1..].to_vec();
+                            let result = match remaining_params.len() == 0 {
+                                true => evaluate(body, env)?,
+                                false => evaluate(
+                                    &AST::Orbit {
+                                        params: remaining_params,
+                                        body: body.clone(),
+                                        line_info: line_info.clone(),
+                                    },
+                                    env,
+                                )?,
+                            };
+
+                            match result {
+                                EvalResult::Resume(identifier) => {
+                                    if let Some(id) = identifier {
+                                        if id == *name {
+                                            continue; // 現在のループを再開
+                                        } else {
+                                            env.pop_scope();
+                                            return Ok(EvalResult::Resume(Some(id)));
+                                        }
+                                    }
+                                    continue;
+                                }
+                                EvalResult::Eject(identifier) => {
+                                    if let Some(id) = identifier {
+                                        if id == *name {
+                                            break; // 現在のループを抜ける
+                                        } else {
+                                            env.pop_scope();
+                                            return Ok(EvalResult::Eject(Some(id)));
+                                        }
+                                    }
+                                    break;
+                                }
+                                _ => {}
+                            }
+
+                            env.pop_scope(); // スコープを終了
+                        }
+                        Ok(EvalResult::Abyss)
+                    } else {
+                        Err(EvalError::TypeError(
+                            format!("Orbit parameter must be of type Arcana: {}", name),
+                            line_info.clone(),
+                        ))
+                    }
+                } else {
+                    Err(EvalError::InvalidOperation(
+                        "Expected OrbitParam in Orbit".to_string(),
+                        line_info.clone(),
+                    ))
+                }
+            }
+        }
+        AST::Resume(identifier, _line_info) => Ok(EvalResult::Resume(identifier.clone())),
+        AST::Eject(identifier, _line_info) => Ok(EvalResult::Eject(identifier.clone())),
         AST::Comment(_, _) => {
             Ok(EvalResult::Abyss) // コメントは何もしない
         }

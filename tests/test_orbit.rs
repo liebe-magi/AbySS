@@ -12,8 +12,20 @@ fn test_simple_orbit() {
     };
     sum;
     "#;
+
+    let mut sum_rust = 0;
+    for i in 0..10 {
+        sum_rust += i;
+    }
+
     match test_base(input) {
-        Ok(results) => assert!(matches!(results[2], EvalResult::Arcana(45))),
+        Ok(results) => {
+            if let EvalResult::Arcana(sum_abyss) = results[2] {
+                assert_eq!(sum_rust, sum_abyss);
+            } else {
+                panic!("Expected Arcana result");
+            }
+        }
         Err(e) => panic!("Error: {:?}", e),
     }
 }
@@ -29,8 +41,24 @@ fn test_orbit_with_nested_orbit() {
     };
     sum;
     "#;
+
+    // Rustでの同じアルゴリズム
+    let mut sum_rust = 0;
+    for i in 0..3 {
+        for j in 0..3 {
+            sum_rust += i * j;
+        }
+    }
+
+    // AbySSでの評価
     match test_base(input) {
-        Ok(results) => assert!(matches!(results[2], EvalResult::Arcana(18))),
+        Ok(results) => {
+            if let EvalResult::Arcana(sum_abyss) = results[2] {
+                assert_eq!(sum_rust, sum_abyss);
+            } else {
+                panic!("Expected Arcana result");
+            }
+        }
         Err(e) => panic!("Error: {:?}", e),
     }
 }
@@ -47,8 +75,27 @@ fn test_orbit_with_resume() {
     };
     sum;
     "#;
+
+    // Rustでの同じアルゴリズム
+    let mut sum_rust = 0;
+    for i in 0..3 {
+        for j in 0..3 {
+            if i == j {
+                continue; // jのループをスキップ
+            }
+            sum_rust += i * j;
+        }
+    }
+
+    // AbySSでの評価
     match test_base(input) {
-        Ok(results) => assert!(matches!(results[2], EvalResult::Arcana(12))),
+        Ok(results) => {
+            if let EvalResult::Arcana(sum_abyss) = results[2] {
+                assert_eq!(sum_rust, sum_abyss);
+            } else {
+                panic!("Expected Arcana result");
+            }
+        }
         Err(e) => panic!("Error: {:?}", e),
     }
 }
@@ -65,8 +112,25 @@ fn test_orbit_with_eject() {
     };
     sum;
     "#;
+
+    // Rustでの同じアルゴリズム
+    let mut sum_rust = 0;
+    for i in 0..5 {
+        if i == 3 {
+            break; // ループ全体を抜ける
+        }
+        sum_rust += i;
+    }
+
+    // AbySSでの評価
     match test_base(input) {
-        Ok(results) => assert!(matches!(results[2], EvalResult::Arcana(3))), // 0 + 1 + 2
+        Ok(results) => {
+            if let EvalResult::Arcana(sum_abyss) = results[2] {
+                assert_eq!(sum_rust, sum_abyss);
+            } else {
+                panic!("Expected Arcana result");
+            }
+        }
         Err(e) => panic!("Error: {:?}", e),
     }
 }
@@ -85,8 +149,27 @@ fn test_orbit_with_eject_outer_loop() {
     };
     sum;
     "#;
+
+    // Rustでの同じアルゴリズム
+    let mut sum_rust = 0;
+    'outer: for i in 0..3 {
+        for j in 0..3 {
+            if i == j {
+                break 'outer; // 外側のループを抜ける
+            }
+            sum_rust += i * j;
+        }
+    }
+
+    // AbySSでの評価
     match test_base(input) {
-        Ok(results) => assert!(matches!(results[2], EvalResult::Arcana(0))), // 外側ループが全て抜ける
+        Ok(results) => {
+            if let EvalResult::Arcana(sum_abyss) = results[2] {
+                assert_eq!(sum_rust, sum_abyss);
+            } else {
+                panic!("Expected Arcana result");
+            }
+        }
         Err(e) => panic!("Error: {:?}", e),
     }
 }
@@ -103,8 +186,25 @@ fn test_orbit_with_resume_outer_loop() {
     };
     sum;
     "#;
+
+    // Rustでの同じアルゴリズム
+    let mut sum_rust = 0;
+    for i in 0..3 {
+        if i == 1 {
+            continue; // 外側のループをスキップ
+        }
+        sum_rust += i;
+    }
+
+    // AbySSでの評価
     match test_base(input) {
-        Ok(results) => assert!(matches!(results[2], EvalResult::Arcana(2))), // i == 1 のループがスキップされる
+        Ok(results) => {
+            if let EvalResult::Arcana(sum_abyss) = results[2] {
+                assert_eq!(sum_rust, sum_abyss);
+            } else {
+                panic!("Expected Arcana result");
+            }
+        }
         Err(e) => panic!("Error: {:?}", e),
     }
 }
@@ -121,8 +221,25 @@ fn test_infinite_orbit_with_eject() {
     };
     count;
     "#;
+
+    // Rustでの同じアルゴリズム
+    let mut count_rust = 0;
+    loop {
+        count_rust += 1;
+        if count_rust == 10 {
+            break; // 10回でループを終了
+        }
+    }
+
+    // AbySSでの評価
     match test_base(input) {
-        Ok(results) => assert!(matches!(results[2], EvalResult::Arcana(10))),
+        Ok(results) => {
+            if let EvalResult::Arcana(count_abyss) = results[2] {
+                assert_eq!(count_rust, count_abyss);
+            } else {
+                panic!("Expected Arcana result");
+            }
+        }
         Err(e) => panic!("Error: {:?}", e),
     }
 }
