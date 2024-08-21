@@ -3,6 +3,7 @@ orbit(i = 0..=10) {
     unveil(i);
 };
 
+// #region Infinite loop
 unveil("Infinite loop:");
 forge morph i:arcana = 0;
 orbit {
@@ -12,6 +13,7 @@ orbit {
     i += 1;
 };
 unveil(i);
+// #endregion
 
 unveil("Nested loop:");
 orbit(i = 0..3, j = 0..3) {
