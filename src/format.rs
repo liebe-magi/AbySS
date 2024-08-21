@@ -1,7 +1,7 @@
 use crate::ast::{AssignmentOp, Type, AST};
 
 pub fn format_ast(ast: &AST, indent_level: usize) -> String {
-    let indent = "  ".repeat(indent_level); // インデントを生成
+    let indent = "    ".repeat(indent_level); // インデントを生成
 
     // 優先順位テーブル
     let precedence = |node: &AST| match node {
@@ -190,13 +190,13 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
                     })
                     .collect::<Vec<_>>()
                     .join(", ");
-                result.push_str(&format!("({})", conditions));
+                result.push_str(&format!(" ({})", conditions));
             }
             result.push_str(" {\n");
             for branch in branches {
                 // コメントノードの場合はスキップ
                 if let AST::Comment(text, _) = branch {
-                    result.push_str(&format!("{}{}\n", "  ".repeat(indent_level + 1), text));
+                    result.push_str(&format!("{}{}\n", "    ".repeat(indent_level + 1), text));
                     continue;
                 }
 
@@ -208,7 +208,7 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
                         .join(", ");
                     result.push_str(&format!(
                         "{}{} => {}\n",
-                        "  ".repeat(indent_level + 1),
+                        "    ".repeat(indent_level + 1),
                         if pattern == "" {
                             "_".to_string()
                         } else {
@@ -222,7 +222,39 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             result
         }
         AST::OracleDontCareItem(_) => format!("_"),
+        AST::Orbit { params, body, .. } => {
+            let mut result = "orbit".to_string();
+            if !params.is_empty() {
+                let params_str = params
+                    .iter()
+                    .map(|param| format_ast(param, indent_level))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                result.push_str(&format!(" ({})", params_str));
+            }
+            result.push_str(&format_ast(body, indent_level).trim());
+            result
+        }
+        AST::OrbitParam {
+            name,
+            start,
+            end,
+            op,
+            ..
+        } => {
+            let start_expr = format_ast(start, 0);
+            let end_expr = format_ast(end, 0);
+            format!("{} = {}{}{}", name, start_expr, op, end_expr)
+        }
+        AST::Resume(value, _) => match value {
+            Some(idendifier) => format!("resume {}", idendifier),
+            None => "resume".to_string(),
+        },
+        AST::Eject(value, _) => match value {
+            Some(idendifier) => format!("eject {}", idendifier),
+            None => "eject".to_string(),
+        },
         AST::Comment(text, _) => text.clone(),
-        _ => "".to_string(),
+        _ => format!("Not implemented: {:?}", ast),
     }
 }

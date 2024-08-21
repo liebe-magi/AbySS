@@ -21,7 +21,8 @@ orbit(i = 0..3, j = 0..3) {
 unveil("Continue:");
 orbit(i = 0..3, j = 0..3) {
     oracle(i==j) {
-        (boon) => resume j; // 内側のループをスキップ
+        // 内側のループをスキップ
+        (boon) => resume j;
     };
     unveil(i, " ", j);
 };
@@ -31,7 +32,8 @@ orbit(i = 0..3) {
     orbit(j = 0..3) {
         unveil(i, " ", j);
         oracle(i==2) {
-            (boon) => eject i; // 外側のループを抜ける
+            // 外側のループを抜ける
+            (boon) => eject i;
         };
     };
 };
