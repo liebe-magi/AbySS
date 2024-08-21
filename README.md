@@ -243,7 +243,7 @@ This example increments `i` in each iteration until it reaches 100, at which poi
 AbySS allows you to define loops with more than one parameter, making it easier to iterate over multiple ranges simultaneously. Here's an example where two loop variables, `i` and `j`, are defined:
 
 ```abyss
-orbit(i = 0..3, j = 0..3) {
+orbit (i = 0..3, j = 0..3) {
     unveil(i, " ", j);
 }
 ```
@@ -255,9 +255,9 @@ In this loop, `i` and `j` both iterate over the range from 0 to 2, and each pair
 The `resume` keyword allows you to skip the current iteration of a loop and move on to the next iteration. This can be used to control the flow of nested loops.
 
 ```abyss
-orbit(i = 0..3) {
-    orbit(j = 0..3) {
-        oracle(i == j) {
+orbit (i = 0..3) {
+    orbit (j = 0..3) {
+        oracle (i == j) {
             (boon) => resume j; // Skip the iteration when i equals j
         };
         unveil(i, " ", j);
@@ -271,10 +271,10 @@ In this example, the inner loop skips the iteration whenever `i` is equal to `j`
 The `eject` keyword breaks the loop entirely. In nested loops, you can specify which loop to break by passing the loop variable as an argument.
 
 ```abyss
-orbit(i = 0..3) {
-    orbit(j = 0..3) {
+orbit (i = 0..3) {
+    orbit (j = 0..3) {
         unveil(i, " ", j);
-        oracle(i == 2) {
+        oracle (i == 2) {
             (boon) => eject i; // Break the outer loop when i equals 2
         };
     }
