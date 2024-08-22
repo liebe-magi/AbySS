@@ -110,3 +110,46 @@ fn test_unveil_rune_3() {
         Err(e) => panic!("Error: {:?}", e),
     }
 }
+
+#[test]
+fn test_trans_in_string_concatenation() {
+    let input = r#"
+    forge x: rune = "answer: " + trans(42 as rune);
+    x;
+    "#;
+    match test_base(input) {
+        Ok(results) => {
+            assert!(matches!(results[1], EvalResult::Rune(ref s) if s == "answer: 42"))
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_trans_in_arithmetic_expression() {
+    let input = r#"
+    forge y: arcana = trans("42" as arcana) + 8;
+    y;
+    "#;
+    match test_base(input) {
+        Ok(results) => {
+            assert!(matches!(results[1], EvalResult::Arcana(50)))
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}
+
+#[test]
+fn test_trans_with_assignment_operator() {
+    let input = r#"
+    forge morph z: rune = "answer: ";
+    z += trans(42 as rune);
+    z;
+    "#;
+    match test_base(input) {
+        Ok(results) => {
+            assert!(matches!(results[2], EvalResult::Rune(ref s) if s == "answer: 42"))
+        }
+        Err(e) => panic!("Error: {:?}", e),
+    }
+}

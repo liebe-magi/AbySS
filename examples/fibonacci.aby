@@ -1,0 +1,15 @@
+// Print Fibonacci sequence up to n terms
+
+forge n: arcana = 20;
+forge morph before: arcana = 0;
+forge morph current: arcana = 1;
+
+forge morph result: rune = trans(before as rune) + " " + trans(current as rune);
+
+orbit (i = 0..n-2) {
+    forge next: arcana = before + current;
+    result += " " + trans(next as rune);
+    before = current;
+    current = next;
+};
+unveil(result);
