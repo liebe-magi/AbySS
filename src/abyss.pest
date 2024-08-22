@@ -34,6 +34,8 @@ orbit_flow  = { resume_expr | eject_expr }
 resume_expr = { "resume" ~ identifier? }
 eject_expr  = { "eject" ~ identifier? }
 
+trans_expr = { "trans" ~ "(" ~ expression ~ "as" ~ type ~ ")" }
+
 identifier = @{ ASCII_ALPHANUMERIC+ }
 type       =  { "omen" | "aether" | "arcana" | "rune" }
 omen       = @{ "boon" | "hex" }
@@ -45,8 +47,7 @@ sign  = { "+" | "-" }
 morph = { "morph" }
 
 expressions = { expression ~ ("," ~ expression)* }
-expression  = { trans_expr | oracle_expr | or_expr }
-trans_expr  = { "trans" ~ "(" ~ expression ~ "as" ~ type ~ ")" }
+expression  = { oracle_expr | or_expr }
 or_expr     = { and_expr ~ (or_op ~ and_expr)* }
 and_expr    = { not_expr ~ (and_op ~ not_expr)* }
 not_expr    = { not_op? ~ comp_expr }
@@ -54,7 +55,7 @@ comp_expr   = { add_expr ~ (comp_op ~ add_expr)? }
 add_expr    = { mul_expr ~ (add_op ~ mul_expr)* }
 mul_expr    = { pow_expr ~ (mul_op ~ pow_expr)* }
 pow_expr    = { factor ~ (pow_op ~ factor)* }
-factor      = { omen | aether | arcana | rune | identifier | "(" ~ expression ~ ")" }
+factor      = { trans_expr | omen | aether | arcana | rune | identifier | "(" ~ expression ~ ")" }
 
 assignment_op = { "+=" | "-=" | "*=" | "/=" | "%=" | "^=" | "**=" | "=" }
 
