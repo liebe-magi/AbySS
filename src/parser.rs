@@ -5,10 +5,18 @@ use pest_derive::Parser;
 
 use crate::ast::{AssignmentOp, ConditionalAssignment, LineInfo, Type, AST};
 
+/// The AbyssParser struct, generated using Pest, handles the parsing of the AbySS grammar.
 #[derive(Parser)]
-#[grammar = "abyss.pest"] // 文法ファイルを指定
+#[grammar = "abyss.pest"]
 pub struct AbyssParser;
 
+/// Parses the input string using the AbySS grammar and returns the top-level AST node.
+///
+/// # Arguments
+/// * `input` - A string slice containing the AbySS source code.
+///
+/// # Returns
+/// A `Result` containing a `Pair<Rule>` on success or a `pest::error::Error` on failure.
 pub fn parse(input: &str) -> Result<Pair<Rule>, Error<Rule>> {
     match AbyssParser::parse(Rule::statements, input) {
         Ok(mut pairs) => Ok(pairs.next().unwrap()),
@@ -16,8 +24,15 @@ pub fn parse(input: &str) -> Result<Pair<Rule>, Error<Rule>> {
     }
 }
 
+/// Builds the AST from a parsed pair of the AbySS grammar.
+///
+/// # Arguments
+/// * `pair` - A `Pair<Rule>` representing a parsed node in the AbySS grammar.
+///
+/// # Returns
+/// A `Result` containing an `AST` node on success or a `pest::error::Error` on failure.
 pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
-    let line_info = Some(LineInfo::from_span(&pair.as_span())); // 行・列情報を取得
+    let line_info = Some(LineInfo::from_span(&pair.as_span()));
 
     match pair.as_rule() {
         Rule::statement => {
@@ -41,7 +56,7 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                     )),
                 }
             } else {
-                Ok(left) // 論理演算子がない場合は単純な`and_expr`ノードを返す
+                Ok(left)
             }
         }
         Rule::and_expr => {
@@ -59,14 +74,14 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                     )),
                 }
             } else {
-                Ok(left) // 論理演算子がない場合は単純な`not_expr`ノードを返す
+                Ok(left)
             }
         }
         Rule::not_expr => {
             let mut inner = pair.into_inner();
 
             let exist_not_op = if inner.peek().unwrap().as_rule() == Rule::not_op {
-                inner.next(); // `not_op` を読み飛ばす
+                inner.next();
                 true
             } else {
                 false
@@ -77,7 +92,7 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
             if exist_not_op {
                 Ok(AST::LogicalNot(Box::new(expr), line_info))
             } else {
-                Ok(expr) // `not_op` が存在しない場合は単純な`comp_expr`ノードを返す
+                Ok(expr)
             }
         }
         Rule::comp_expr => {
@@ -108,7 +123,7 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                     )),
                 }
             } else {
-                Ok(left) // 比較演算子がない場合は単純な`power`ノードを返す
+                Ok(left)
             }
         }
         Rule::add_expr => {
@@ -202,11 +217,11 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
             Ok(AST::Rune(value, line_info))
         }
         Rule::forge_var => {
-            let span = pair.as_span(); // `pair`の`span`を取得して保持しておく
+            let span = pair.as_span();
             let mut inner = pair.into_inner();
 
             let is_morph = if inner.peek().unwrap().as_rule() == Rule::morph {
-                inner.next(); // morphを読み飛ばす
+                inner.next();
                 true
             } else {
                 false
@@ -275,7 +290,7 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
             Ok(AST::Unveil(args?, line_info))
         }
         Rule::trans_expr => {
-            let span = pair.as_span(); // `pair`の`span`を取得して保持しておく
+            let span = pair.as_span();
             let mut inner = pair.into_inner();
             let expr = build_ast(inner.next().unwrap())?;
             let target_type = match inner.next().unwrap().as_str() {
@@ -287,15 +302,23 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                     ErrorVariant::CustomError {
                         message: "Unknown type in trans expression".to_string(),
                     },
-                    span, // ここで保持していた`span`を使う
+                    span,
                 ))?,
             };
             Ok(AST::Trans(Box::new(expr), target_type, line_info))
         }
         Rule::reveal => {
             let mut inner = pair.into_inner();
-            let expression = build_ast(inner.next().unwrap())?;
-            Ok(AST::Reveal(Box::new(expression), line_info))
+            match inner.next() {
+                Some(expr) => {
+                    let expression = build_ast(expr)?;
+                    Ok(AST::Reveal(Box::new(expression), line_info.clone()))
+                }
+                None => Ok(AST::Reveal(
+                    Box::new(AST::Abyss(line_info.clone())),
+                    line_info.clone(),
+                )),
+            }
         }
         Rule::oracle_expr => {
             let mut inner = pair.into_inner();
@@ -303,7 +326,6 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
             let mut branches = Vec::new();
             let mut is_match = false;
 
-            // 条件部分があるかどうかチェック
             if let Some(conditional_or_branches) = inner.peek() {
                 if conditional_or_branches.as_rule() == Rule::oracle_conditional {
                     let mut condition_pair = inner.next().unwrap().into_inner();
@@ -331,21 +353,19 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                     }
                 }
             }
-            // ブランチ部分の解析
+
             for branch_pair in inner {
                 let branch_span = branch_pair.as_span();
 
-                // コメントの検出
                 if branch_pair.as_rule() == Rule::COMMENT {
                     let comment_text = branch_pair.as_str().to_string();
                     branches.push(AST::Comment(comment_text, line_info.clone()));
-                    continue; // 次のブランチに移動
+                    continue;
                 }
 
                 let mut branch_inner = branch_pair.into_inner();
-                // デフォルトブランチの処理
                 if branch_inner.peek().unwrap().as_span().as_str() == "_" {
-                    branch_inner.next(); // branch_innerを読み飛ばす
+                    branch_inner.next();
                     let body_ast = if let Some(body) = branch_inner.next() {
                         build_ast(body)?
                     } else {
@@ -459,6 +479,86 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                     span,
                 )),
             }
+        }
+        Rule::engrave => {
+            let span = pair.as_span();
+            let mut inner = pair.into_inner();
+            let name = inner.next().unwrap().as_str().to_string();
+            let mut params = Vec::new();
+            if inner.peek().unwrap().as_rule() == Rule::engrave_params {
+                let param_pairs = inner.next().unwrap().into_inner();
+                for param_pair in param_pairs {
+                    let param = build_ast(param_pair)?;
+                    params.push(param);
+                }
+            }
+            let return_type = match inner.peek().unwrap().as_rule() {
+                Rule::engrave_type => {
+                    let return_type = inner.next().unwrap().as_str();
+                    match return_type {
+                        "arcana" => Type::Arcana,
+                        "aether" => Type::Aether,
+                        "rune" => Type::Rune,
+                        "omen" => Type::Omen,
+                        "abyss" => Type::Abyss,
+                        _ => Err(Error::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: format!("Unknown return type in engrave: {}", return_type),
+                            },
+                            span,
+                        ))?,
+                    }
+                }
+                _ => Type::Abyss,
+            };
+            Ok(AST::Engrave {
+                name,
+                params,
+                return_type,
+                body: Box::new(build_ast(inner.next().unwrap())?),
+                line_info,
+            })
+        }
+        Rule::engrave_param => {
+            let span = pair.as_span();
+            let mut inner = pair.into_inner();
+            let name = inner.next().unwrap().as_str().to_string();
+            let param_type = match inner.next().unwrap().as_str() {
+                "arcana" => Type::Arcana,
+                "aether" => Type::Aether,
+                "rune" => Type::Rune,
+                "omen" => Type::Omen,
+                _ => Err(Error::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "Unknown type in engrave parameter".to_string(),
+                    },
+                    span,
+                ))?,
+            };
+            Ok(AST::EngraveParam {
+                name,
+                param_type,
+                line_info,
+            })
+        }
+        Rule::func_call => {
+            let mut inner = pair.into_inner();
+            let name = inner.next().unwrap().as_str().to_string();
+            let mut args = Vec::new();
+            if let Some(peeked) = inner.peek() {
+                if peeked.as_rule() == Rule::func_args {
+                    let arg_pairs = inner.next().unwrap().into_inner();
+                    for arg_pair in arg_pairs {
+                        let arg = build_ast(arg_pair)?;
+                        args.push(arg);
+                    }
+                }
+            }
+            Ok(AST::FuncCall {
+                name,
+                args,
+                line_info,
+            })
         }
         Rule::COMMENT => {
             let comment = pair.as_str().to_string();

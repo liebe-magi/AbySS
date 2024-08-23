@@ -1,4 +1,4 @@
-![Crates.io Version](https://img.shields.io/crates/v/abyss-lang)
+[![Crates.io Version](https://img.shields.io/crates/v/abyss-lang)](https://crates.io/crates/abyss-lang)
 [![Build](https://github.com/liebe-magi/abyss/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/liebe-magi/abyss/actions/workflows/build.yml)
 
 # **AbySS: Advanced-scripting by Symbolic Syntax**
@@ -21,12 +21,12 @@ AbySS (Advanced-scripting by Symbolic Syntax) is a programming language designed
 - [Language Syntax](#language-syntax)
   - [Basic Syntax](#basic-syntax)
   - [Types](#types)
+  - [Type Casting](#type-casting)
   - [Variable Declaration](#variable-declaration)
   - [Conditionals](#conditionals)
   - [Loops](#loops)
   - [Functions](#functions)
   - [Input/Output](#inputoutput)
-- [Examples](#examples)
 - [VSCode Extension](#vscode-extension)
 - [Roadmap](#roadmap)
 - [License](#license)
@@ -44,7 +44,7 @@ Alternatively, you can install AbySS by cloning the repository and building it l
 ```bash
 git clone https://github.com/your-repository/abyss.git
 cd abyss
-cargo build
+cargo install --path .
 ```
 
 For test coverage with `cargo-llvm-cov`, install the tool as follows:
@@ -115,9 +115,27 @@ forge message: rune = "Hello, AbySS";
 forge is_active: omen = boon;
 ```
 
+- `arcana`: Derived from the Latin word for "secret" or "mystery," and also referencing the structured numbering of tarot cards, arcana represents integer values, symbolizing the hidden foundations of calculations in programming.
+- `aether`: Inspired by the classical element of ether, believed to fill the universe beyond the terrestrial sphere, aether represents floating-point numbers, capturing the idea of fluid, continuous quantities.
+- `rune`: Borrowed from ancient writing systems used in magic, rune represents strings, suggesting the idea that words and symbols hold power in programming as they do in mystical inscriptions.
+- `omen`: Drawing from the concept of a prophetic sign, omen represents boolean values. The keywords `boon` and `hex` are used for `true` and `false`, respectively — `boon` originates from Old English, meaning a blessing or benefit, while `hex` comes from Germanic folklore, signifying a curse or spell, reinforcing the mystical theme of the language.
+- `abyss`: Symbolizing infinite nothingness, abyss represents the void type, indicating no value is returned, and is also the name of the language, reflecting its philosophy of exploring the depths of symbolic scripting.
+
+### **Type Casting**
+
+In AbySS, type casting is achieved using the `trans` keyword.
+This allows the conversion of values from one type to another.
+
+`trans`: Short for "transformation," `trans` enables the conversion of one type into another, reflecting the idea of magical transformations in programming.
+
+```abyss
+forge x: arcana = trans(3.14 as arcana);
+```
+
 ### **Variable Declaration**
 
-Variables are declared using the `forge` keyword. You must explicitly specify the variable type.
+Variables are declared using the `forge` keyword.
+You must explicitly specify the variable type.
 
 ```abyss
 forge x: arcana = 42;
@@ -131,9 +149,15 @@ forge morph counter: arcana = 10;
 counter += 5;
 ```
 
+- `forge`: Derived from the concept of a blacksmith forging items, this keyword represents the creation and declaration of new variables, symbolizing the act of crafting something new.
+- `morph`: Inspired by transformation, morph is used to indicate mutable variables that can change their form or value over time.
+
 ### **Conditionals**
 
-In AbySS, you can use the `oracle` construct to handle conditionals. One approach is to define conditions directly within each pattern, allowing for flexible and readable branching logic. This method lets you skip a separate conditional statement and write all conditions within the branches themselves.
+In AbySS, you can use the `oracle` construct to handle conditionals. One approach is to define conditions directly within each pattern, allowing for flexible and readable branching logic.
+This method lets you skip a separate conditional statement and write all conditions within the branches themselves.
+
+- `oracle`: Reflecting the role of an oracle in ancient mythology, this keyword is used for conditionals, where decisions and predictions are made based on input.
 
 #### **Pattern-based Oracle**
 
@@ -146,7 +170,9 @@ oracle {
 };
 ```
 
-In this example, the conditions are written directly within the patterns. The oracle evaluates each condition in sequence and executes the matching branch. If no specific conditions are met, the default pattern `_` is executed.
+In this example, the conditions are written directly within the patterns.
+The oracle evaluates each condition in sequence and executes the matching branch.
+If no specific conditions are met, the default pattern `_` is executed.
 
 #### **Boolean-based Oracle**
 
@@ -191,17 +217,25 @@ oracle (a, b) {
 };
 ```
 
-In this example, oracle evaluates multiple conditions (a and b) together and executes the corresponding branch based on their values. If no specific conditions are met, the default pattern _ is used.
+In this example, oracle evaluates multiple conditions (a and b) together and executes the corresponding branch based on their values.
+If no specific conditions are met, the default pattern _ is used.
 
 This flexibility makes `oracle` a powerful tool for creating readable and intuitive branching logic in AbySS.
 
 ### **Loops**
 
-In AbySS, loops are managed using the `orbit` keyword. This construct allows for both simple and complex loop structures, with additional control provided by the `resume` and `eject` keywords. Below, we explore a range of use cases for loops in AbySS, from basic to advanced scenarios.
+In AbySS, loops are managed using the `orbit` keyword.
+This construct allows for both simple and complex loop structures, with additional control provided by the `resume` and `eject` keywords.
+Below, we explore a range of use cases for loops in AbySS, from basic to advanced scenarios.
+
+- `orbit`: Inspired by the celestial motion of planets, orbit represents loops, where the code revolves around a central task repeatedly until a condition changes.
+- `resume`: Reflecting the continuation of interrupted tasks, resume allows the loop to skip the current iteration and move on to the next.
+- `eject`: Analogous to an emergency exit or escape mechanism, eject breaks out of loops, terminating the iteration prematurely.
 
 #### **Simple Loop**
 
-The most basic form of a loop in AbySS iterates over a range of values. In this example, the loop iterates from 0 to 5 (exclusive of 5).
+The most basic form of a loop in AbySS iterates over a range of values.
+In this example, the loop iterates from 0 to 5 (exclusive of 5).
 
 ```abyss
 orbit (i = 0..5) {
@@ -209,7 +243,8 @@ orbit (i = 0..5) {
 }
 ```
 
-This loop prints the numbers from 0 to 4 using the `unveil` function. The `..` operator defines a half-open range, which excludes the upper bound.
+This loop prints the numbers from 0 to 4 using the `unveil` function.
+The `..` operator defines a half-open range, which excludes the upper bound.
 
 #### **Closed Range Loop**
 
@@ -220,11 +255,13 @@ orbit (i = 0..=10) {
     unveil(i);
 }
 ```
+
 In this loop, the numbers from 0 to 10 (inclusive) are printed.
 
 #### **Infinite Loop**
 
-By omitting the loop parameters, you can create an infinite loop that runs until a certain condition is met. The loop can be terminated using the `eject` keyword, which breaks the loop when the condition is satisfied.
+By omitting the loop parameters, you can create an infinite loop that runs until a certain condition is met.
+The loop can be terminated using the `eject` keyword, which breaks the loop when the condition is satisfied.
 
 ```abyss
 forge morph i: arcana = 0;
@@ -240,7 +277,8 @@ This example increments `i` in each iteration until it reaches 100, at which poi
 
 #### **Loop with Multiple Parameters**
 
-AbySS allows you to define loops with more than one parameter, making it easier to iterate over multiple ranges simultaneously. Here's an example where two loop variables, `i` and `j`, are defined:
+AbySS allows you to define loops with more than one parameter, making it easier to iterate over multiple ranges simultaneously.
+Here's an example where two loop variables, `i` and `j`, are defined:
 
 ```abyss
 orbit (i = 0..3, j = 0..3) {
@@ -248,11 +286,13 @@ orbit (i = 0..3, j = 0..3) {
 }
 ```
 
-In this loop, `i` and `j` both iterate over the range from 0 to 2, and each pair of values is printed. This pattern is useful when you need to perform operations that depend on two or more varying values simultaneously.
+In this loop, `i` and `j` both iterate over the range from 0 to 2, and each pair of values is printed.
+This pattern is useful when you need to perform operations that depend on two or more varying values simultaneously.
 
 #### **Resume Keyword**
 
-The `resume` keyword allows you to skip the current iteration of a loop and move on to the next iteration. This can be used to control the flow of nested loops.
+The `resume` keyword allows you to skip the current iteration of a loop and move on to the next iteration.
+This can be used to control the flow of nested loops.
 
 ```abyss
 orbit (i = 0..3) {
@@ -264,11 +304,13 @@ orbit (i = 0..3) {
     }
 }
 ```
+
 In this example, the inner loop skips the iteration whenever `i` is equal to `j`.
 
 #### **Eject Keyword**
 
-The `eject` keyword breaks the loop entirely. In nested loops, you can specify which loop to break by passing the loop variable as an argument.
+The `eject` keyword breaks the loop entirely.
+In nested loops, you can specify which loop to break by passing the loop variable as an argument.
 
 ```abyss
 orbit (i = 0..3) {
@@ -280,19 +322,98 @@ orbit (i = 0..3) {
     }
 }
 ```
+
 Here, the outer loop breaks entirely when `i` equals 2, effectively terminating both the inner and outer loops.
 
-These examples illustrate the flexibility of the `orbit` construct in AbySS, which allows for sophisticated looping patterns with easy-to-read syntax. The ability to control flow with `resume` and `eject` further enhances the language's expressiveness in handling loops.
+These examples illustrate the flexibility of the `orbit` construct in AbySS, which allows for sophisticated looping patterns with easy-to-read syntax.
+The ability to control flow with `resume` and `eject` further enhances the language's expressiveness in handling loops.
 
 ### **Functions**
 
-Functions in AbySS are currently under development. While the core syntax and design are still being finalized, the general concept involves using the `engrave` keyword to define functions. The specifics, such as parameter passing, return types, and function calls, will be detailed as the feature progresses.
+In AbySS, functions are defined using the `engrave` keyword.
+Functions allow you to encapsulate reusable code blocks and return values.
+You can define functions with parameters, specify return types, and call these functions within your scripts.
 
-This feature is actively being developed, so stay tuned for updates as AbySS continues to evolve.
+- `engrave`: Symbolizing the act of carving a magical circle, engrave is used for function definitions, representing the meticulous process of inscribing reusable spells into the code.
+
+#### **Function Definition**
+
+Functions are defined using the `engrave` keyword, followed by the function name, parameters, optional return type, and the function body enclosed in `{}`.
+
+```abyss
+engrave add(a: arcana, b: arcana) -> arcana {
+    reveal a + b;
+};
+```
+
+In this example, the `add` function takes two parameters `a` and `b` of type `arcana` (integer), and returns their sum as an `arcana`.
+
+#### **Function Calls**
+
+You can call a function by using its name followed by parentheses, and pass arguments matching the function's parameters.
+
+```abyss
+forge result: arcana = add(3, 5);
+unveil(result); // Outputs: 8
+```
+
+This example calls the `add` function with the arguments `3` and `5`, stores the result in the `result` variable, and prints it using `unveil`.
+
+#### **Nested Function Calls**
+
+AbySS allows you to call functions within other function calls, enabling complex operations to be broken down into simpler components.
+
+```abyss
+engrave add_three_numbers(x: arcana, y: arcana, z: arcana) -> arcana {
+    reveal add(add(x, y), z);
+};
+
+forge result: arcana = add_three_numbers(1, 2, 3);
+unveil(result); // Outputs: 6
+```
+
+In this example, the `add_three_numbers` function calls the `add` function twice to sum three numbers.
+
+#### **Return Values**
+
+Functions in AbySS use the `reveal` keyword to return values.
+If a function does not explicitly return a value, it implicitly returns `abyss`.
+
+```abyss
+engrave greet() -> rune {
+    reveal "Hello, AbySS!";
+};
+
+unveil(greet()); // Outputs: Hello, AbySS!
+```
+
+This function `greet` returns a `rune` (string) and prints it using `unveil`.
+
+#### **Recursive Functions**
+
+AbySS supports recursive function calls, allowing functions to call themselves.
+
+```abyss
+engrave factorial(n: arcana) -> arcana {
+    oracle (n <= 1) {
+        (boon) => reveal 1;
+    };
+    reveal n * factorial(n - 1);
+};
+
+forge result: arcana = factorial(5);
+unveil(result); // Outputs: 120
+```
+
+This recursive function calculates the factorial of a number.
 
 ### **Input/Output**
 
-For output, AbySS uses the `unveil` function to print values to the console. You can pass multiple variables or expressions as arguments, separated by commas. This allows you to concatenate different elements in the output.
+For output, AbySS uses the `unveil` function to print values to the console.
+You can pass multiple variables or expressions as arguments, separated by commas.
+This allows you to concatenate different elements in the output.
+
+- `unveil`: Chosen for its metaphorical meaning of revealing something hidden, unveil is used for output operations, making the internal state of the program visible to the user.
 
 ```abyss
 unveil("Hello, AbySS");
@@ -312,7 +433,6 @@ To install the extension, search for "[AbySS Codex Familiar](https://marketplace
 
 ### **Roadmap**
 
-- **Function Definitions**: Ongoing development of function definition syntax and implementation (Work-in-progress).
 - **Module System**: Introduce the ability to import functions and variables from other files (TBD).
 - **Standard Input**: Implement standard input functionality to allow user input during script execution (TBD).
 - **Error Handling**: Implement robust error handling (TBD).
