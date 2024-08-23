@@ -20,7 +20,7 @@ func_call = { identifier ~ "(" ~ func_args? ~ ")" }
 func_args = { expression ~ ("," ~ expression)* }
 
 unveil = { "unveil" ~ "(" ~ expression ~ ("," ~ expression)* ~ ")" }
-reveal = { "reveal" ~ expression* }
+reveal = { "reveal" ~ expression? }
 
 oracle_expr             = { "oracle" ~ oracle_conditional? ~ "{" ~ oracle_branch* ~ "}" }
 oracle_conditional      = { "(" ~ (conditional_assignments | expressions) ~ ")" }
@@ -43,7 +43,8 @@ orbit_flow  = { resume_expr | eject_expr }
 resume_expr = { "resume" ~ identifier? }
 eject_expr  = { "eject" ~ identifier? }
 
-trans_expr = { "trans" ~ "(" ~ expression ~ "as" ~ type ~ ")" }
+trans_expr  = { "trans" ~ "(" ~ expression ~ "as" ~ type ~ ")" }
+summon_expr = { "summon" ~ "(" ~ rune ~ "," ~ type ~ ")" }
 
 identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
@@ -65,7 +66,7 @@ comp_expr   = { add_expr ~ (comp_op ~ add_expr)? }
 add_expr    = { mul_expr ~ (add_op ~ mul_expr)* }
 mul_expr    = { pow_expr ~ (mul_op ~ pow_expr)* }
 pow_expr    = { factor ~ (pow_op ~ factor)* }
-factor      = { trans_expr | omen | aether | arcana | rune | func_call | identifier | "(" ~ expression ~ ")" }
+factor      = { trans_expr | summon_expr | omen | aether | arcana | rune | func_call | identifier | "(" ~ expression ~ ")" }
 
 assignment_op = { "+=" | "-=" | "*=" | "/=" | "%=" | "^=" | "**=" | "=" }
 

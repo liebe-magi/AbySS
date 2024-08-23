@@ -102,6 +102,7 @@ pub enum AST {
         args: Vec<AST>,
         line_info: Option<LineInfo>,
     },
+    Summon(String, Type, Option<LineInfo>),
 }
 
 /// Represents a conditional assignment within an oracle statement.

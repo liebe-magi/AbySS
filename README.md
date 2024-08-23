@@ -422,6 +422,20 @@ unveil("x + 42 = ", x + 42);
 
 In the example above, the second `unveil` statement prints both the string `"x + 42 = "` and the result of the expression `x + 42` on the same line.
 
+For input, AbySS provides the `summon` function to read user input during script execution.
+The `summon` function takes a prompt message and an expected type as arguments.
+
+- `summon`: Represents the act of calling forth something from the user, summon is used for standard input operations. You can specify a prompt and the type of input expected (e.g., `arcana`, `aether`, `rune`).
+
+```abyss
+forge name: rune = summon("Input your name: ", rune);
+forge age: arcana = summon("Input your age: ", arcana);
+unveil("Hello, ", name, "! You are ", age, " years old.");
+```
+
+In this example, the user is prompted to enter their name and age.
+The inputs are then stored in the `name` and `age` variables, and both are printed using `unveil`.
+
 ## **VSCode Extension**
 
 The [AbySS Codex Familiar](https://github.com/liebe-magi/abyss-codex-familiar) VSCode extension provides additional support for AbySS development, including:
@@ -433,8 +447,10 @@ To install the extension, search for "[AbySS Codex Familiar](https://marketplace
 
 ### **Roadmap**
 
+- **Collection Types**: Implement collection types such as lists and dictionaries for handling multiple values (Work-in-progress).
+- **Struct Implementation**: Enable the definition and use of custom data structures (TBD).
+- **Generics Introduction**: Introduce generics to allow functions and data structures to be more flexible and reusable with different types (TBD).
 - **Module System**: Introduce the ability to import functions and variables from other files (TBD).
-- **Standard Input**: Implement standard input functionality to allow user input during script execution (TBD).
 - **Error Handling**: Implement robust error handling (TBD).
 - **File I/O**: Introduce input functionality and file handling (TBD).
 - **Standard Library**: Develop a standard library with common functions and utilities (TBD).
