@@ -1,5 +1,5 @@
 use crate::ast::{AssignmentOp, ConditionalAssignment, LineInfo, Type, AST};
-use crate::env::{Environment, Value};
+use crate::env::{Environment, Function, Value};
 use colored::*;
 use std::fmt;
 
@@ -67,6 +67,7 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
         AST::Arcana(n, _line_info) => Ok(EvalResult::Arcana(*n)),
         AST::Aether(n, _line_info) => Ok(EvalResult::Aether(*n)),
         AST::Rune(s, _line_info) => Ok(EvalResult::Rune(s.clone())),
+        AST::Abyss(_line_info) => Ok(EvalResult::Abyss),
         AST::Add(left, right, line_info) => match (evaluate(left, env)?, evaluate(right, env)?) {
             (EvalResult::Arcana(l), EvalResult::Arcana(r)) => Ok(EvalResult::Arcana(l + r)),
             (EvalResult::Aether(l), EvalResult::Aether(r)) => Ok(EvalResult::Aether(l + r)),
@@ -248,7 +249,13 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                     ))
                 }
             };
-            env.set_var(name.clone(), value, var_type.clone(), *is_morph);
+            env.set_var(
+                name.clone(),
+                value,
+                var_type.clone(),
+                *is_morph,
+                line_info.clone(),
+            );
             Ok(EvalResult::Abyss)
         }
         AST::Assignment {
@@ -430,6 +437,10 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                     "Casting to Omen is not supported".to_string(),
                     line_info.clone(),
                 )),
+                _ => Err(EvalError::InvalidOperation(
+                    format!("Unsupported cast to type {:?}", target_type),
+                    line_info.clone(),
+                )),
             }
         }
         AST::Oracle {
@@ -450,24 +461,28 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                             Value::Arcana(n),
                             Type::Arcana,
                             false,
+                            line_info.clone(),
                         ),
                         EvalResult::Aether(n) => env.set_var(
                             conditional.variable.clone(),
                             Value::Aether(n),
                             Type::Aether,
                             false,
+                            line_info.clone(),
                         ),
                         EvalResult::Rune(ref s) => env.set_var(
                             conditional.variable.clone(),
                             Value::Rune(s.clone()),
                             Type::Rune,
                             false,
+                            line_info.clone(),
                         ),
                         EvalResult::Omen(b) => env.set_var(
                             conditional.variable.clone(),
                             Value::Omen(b),
                             Type::Omen,
                             false,
+                            line_info.clone(),
                         ),
                         _ => {
                             return Err(EvalError::InvalidOperation(
@@ -639,7 +654,13 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                             env.push_scope(); // 新しいスコープを作成
 
                             // パラメータを環境に追加
-                            env.set_var(name.clone(), Value::Arcana(value), Type::Arcana, true);
+                            env.set_var(
+                                name.clone(),
+                                Value::Arcana(value),
+                                Type::Arcana,
+                                true,
+                                line_info.clone(),
+                            );
 
                             // 残りのパラメータで再帰的に処理を行う
                             let remaining_params = params[1..].to_vec();
@@ -700,6 +721,101 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
         }
         AST::Resume(identifier, _line_info) => Ok(EvalResult::Resume(identifier.clone())),
         AST::Eject(identifier, _line_info) => Ok(EvalResult::Eject(identifier.clone())),
+        AST::Engrave {
+            name,
+            params,
+            return_type,
+            body,
+            line_info,
+        } => {
+            // 関数を環境に登録
+            let function = Function {
+                name: name.clone(),
+                params: params.clone(),
+                return_type: return_type.clone(),
+                body: body.clone(),
+                line_info: line_info.clone(),
+            };
+            env.set_function(name.clone(), function);
+            Ok(EvalResult::Abyss)
+        }
+        AST::FuncCall {
+            name,
+            args,
+            line_info,
+        } => {
+            // 関数の取得
+            let function = {
+                env.get_function(name)
+                    .ok_or_else(|| EvalError::UndefinedVariable(name.clone(), line_info.clone()))?
+            }
+            .clone();
+
+            // パラメータを先にクローンしておく
+            let params = function.params.clone();
+
+            // まず、引数を評価し、その結果を保存
+            let mut evaluated_args = Vec::new();
+            for arg in args {
+                let evaluated_arg = evaluate(arg, env)?;
+                evaluated_args.push(evaluated_arg);
+            }
+
+            // 新しいスコープで関数実行
+            env.push_scope();
+
+            // 引数の評価結果と関数パラメータへの対応付け
+            for (evaluated_arg, param) in evaluated_args.into_iter().zip(params.iter()) {
+                let (name, param_type) = match param {
+                    AST::EngraveParam {
+                        name, param_type, ..
+                    } => (name, param_type),
+                    _ => {
+                        return Err(EvalError::InvalidOperation(
+                            format!("Expected EngraveParam in function definition: {}", name),
+                            line_info.clone(),
+                        ))
+                    }
+                };
+                let value = match (evaluated_arg, param_type) {
+                    (EvalResult::Arcana(n), Type::Arcana) => Value::Arcana(n),
+                    (EvalResult::Aether(n), Type::Aether) => Value::Aether(n),
+                    (EvalResult::Rune(s), Type::Rune) => Value::Rune(s),
+                    (EvalResult::Omen(b), Type::Omen) => Value::Omen(b),
+                    _ => {
+                        return Err(EvalError::TypeError(
+                            format!("Type mismatch for parameter {}", name),
+                            line_info.clone(),
+                        ))
+                    }
+                };
+                env.set_var(
+                    name.to_string(),
+                    value,
+                    param_type.clone(),
+                    false,
+                    line_info.clone(),
+                );
+            }
+
+            // 関数ボディの評価
+            let result = evaluate(&function.body, env)?;
+
+            env.pop_scope(); // スコープを終了
+
+            // resultがfunctionの戻り値の型と一致するか確認
+            match (result, function.return_type) {
+                (EvalResult::Arcana(n), Type::Arcana) => Ok(EvalResult::Arcana(n)),
+                (EvalResult::Aether(n), Type::Aether) => Ok(EvalResult::Aether(n)),
+                (EvalResult::Rune(s), Type::Rune) => Ok(EvalResult::Rune(s)),
+                (EvalResult::Omen(b), Type::Omen) => Ok(EvalResult::Omen(b)),
+                (EvalResult::Abyss, Type::Abyss) => Ok(EvalResult::Abyss),
+                _ => Err(EvalError::TypeError(
+                    format!("Type mismatch for return value of function {}", name),
+                    function.line_info.clone(),
+                )),
+            }
+        }
         AST::Comment(_, _) => {
             Ok(EvalResult::Abyss) // コメントは何もしない
         }

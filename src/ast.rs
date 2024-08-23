@@ -1,5 +1,6 @@
 use pest::Span;
 
+/// Represents line and column information for debugging purposes.
 #[derive(Debug, Clone)]
 pub struct LineInfo {
     pub line: usize,
@@ -7,12 +8,14 @@ pub struct LineInfo {
 }
 
 impl LineInfo {
+    /// Creates a `LineInfo` from a given `Span`.
     pub fn from_span(span: &Span) -> Self {
         let (line, column) = span.start_pos().line_col();
         LineInfo { line, column }
     }
 }
 
+/// Represents the abstract syntax tree (AST) for the language.
 #[derive(Debug, Clone)]
 pub enum AST {
     Statement(Box<AST>, Option<LineInfo>),
@@ -20,6 +23,7 @@ pub enum AST {
     Arcana(i64, Option<LineInfo>),
     Aether(f64, Option<LineInfo>),
     Rune(String, Option<LineInfo>),
+    Abyss(Option<LineInfo>),
     Add(Box<AST>, Box<AST>, Option<LineInfo>),
     Sub(Box<AST>, Box<AST>, Option<LineInfo>),
     Mul(Box<AST>, Box<AST>, Option<LineInfo>),
@@ -45,7 +49,7 @@ pub enum AST {
     },
     Assignment {
         name: String,
-        value: Box<AST>, // 定義済み変数への代入用ノード
+        value: Box<AST>,
         op: AssignmentOp,
         line_info: Option<LineInfo>,
     },
@@ -81,31 +85,52 @@ pub enum AST {
     },
     Resume(Option<String>, Option<LineInfo>),
     Eject(Option<String>, Option<LineInfo>),
+    Engrave {
+        name: String,
+        params: Vec<AST>,
+        return_type: Type,
+        body: Box<AST>,
+        line_info: Option<LineInfo>,
+    },
+    EngraveParam {
+        name: String,
+        param_type: Type,
+        line_info: Option<LineInfo>,
+    },
+    FuncCall {
+        name: String,
+        args: Vec<AST>,
+        line_info: Option<LineInfo>,
+    },
 }
 
+/// Represents a conditional assignment within an oracle statement.
 #[derive(Debug, Clone)]
 pub struct ConditionalAssignment {
-    pub variable: String,     // 条件文で参照する変数
-    pub expression: Box<AST>, // 変数に代入される式
+    pub variable: String,
+    pub expression: Box<AST>,
     pub line_info: Option<LineInfo>,
 }
 
+/// Represents the type of a variable or expression.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Arcana,
     Aether,
     Rune,
     Omen,
+    Abyss,
 }
 
+/// Represents an assignment operation.
 #[derive(Debug, Clone)]
 pub enum AssignmentOp {
-    Assign, // 単純な代入
+    Assign,
     AddAssign,
     SubAssign,
     MulAssign,
     DivAssign,
-    ModAssign,       // 剰余代入を追加
-    PowArcanaAssign, // ^=
-    PowAetherAssign, // **=
+    ModAssign,
+    PowArcanaAssign,
+    PowAetherAssign,
 }

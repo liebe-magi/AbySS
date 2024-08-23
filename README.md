@@ -1,4 +1,4 @@
-![Crates.io Version](https://img.shields.io/crates/v/abyss-lang)
+[![Crates.io Version](https://img.shields.io/crates/v/abyss-lang)](https://crates.io/crates/abyss-lang)
 [![Build](https://github.com/liebe-magi/abyss/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/liebe-magi/abyss/actions/workflows/build.yml)
 
 # **AbySS: Advanced-scripting by Symbolic Syntax**
@@ -26,7 +26,6 @@ AbySS (Advanced-scripting by Symbolic Syntax) is a programming language designed
   - [Loops](#loops)
   - [Functions](#functions)
   - [Input/Output](#inputoutput)
-- [Examples](#examples)
 - [VSCode Extension](#vscode-extension)
 - [Roadmap](#roadmap)
 - [License](#license)
@@ -286,9 +285,77 @@ These examples illustrate the flexibility of the `orbit` construct in AbySS, whi
 
 ### **Functions**
 
-Functions in AbySS are currently under development. While the core syntax and design are still being finalized, the general concept involves using the `engrave` keyword to define functions. The specifics, such as parameter passing, return types, and function calls, will be detailed as the feature progresses.
+In AbySS, functions are defined using the `engrave` keyword. Functions allow you to encapsulate reusable code blocks and return values. You can define functions with parameters, specify return types, and call these functions within your scripts.
 
-This feature is actively being developed, so stay tuned for updates as AbySS continues to evolve.
+#### **Function Definition**
+
+Functions are defined using the `engrave` keyword, followed by the function name, parameters, optional return type, and the function body enclosed in `{}`.
+
+```abyss
+engrave add(a: arcana, b: arcana) -> arcana {
+    reveal a + b;
+};
+```
+
+In this example, the `add` function takes two parameters `a` and `b` of type `arcana` (integer), and returns their sum as an `arcana`.
+
+#### **Function Calls**
+
+You can call a function by using its name followed by parentheses, and pass arguments matching the function's parameters.
+
+```abyss
+forge result: arcana = add(3, 5);
+unveil(result); // Outputs: 8
+```
+
+This example calls the `add` function with the arguments `3` and `5`, stores the result in the `result` variable, and prints it using `unveil`.
+
+#### **Nested Function Calls**
+
+AbySS allows you to call functions within other function calls, enabling complex operations to be broken down into simpler components.
+
+```abyss
+engrave add_three_numbers(x: arcana, y: arcana, z: arcana) -> arcana {
+    reveal add(add(x, y), z);
+};
+
+forge result: arcana = add_three_numbers(1, 2, 3);
+unveil(result); // Outputs: 6
+```
+
+In this example, the `add_three_numbers` function calls the `add` function twice to sum three numbers.
+
+#### **Return Values**
+
+Functions in AbySS use the `reveal` keyword to return values. If a function does not explicitly return a value, it implicitly returns `abyss`.
+
+```abyss
+engrave greet() -> rune {
+    reveal "Hello, AbySS!";
+};
+
+unveil(greet()); // Outputs: Hello, AbySS!
+```
+
+This function `greet` returns a `rune` (string) and prints it using `unveil`.
+
+#### **Recursive Functions**
+
+AbySS supports recursive function calls, allowing functions to call themselves.
+
+```abyss
+engrave factorial(n: arcana) -> arcana {
+    oracle (n <= 1) {
+        (boon) => reveal 1;
+    };
+    reveal n * factorial(n - 1);
+};
+
+forge result: arcana = factorial(5);
+unveil(result); // Outputs: 120
+```
+
+This recursive function calculates the factorial of a number.
 
 ### **Input/Output**
 

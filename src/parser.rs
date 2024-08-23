@@ -294,8 +294,16 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
         }
         Rule::reveal => {
             let mut inner = pair.into_inner();
-            let expression = build_ast(inner.next().unwrap())?;
-            Ok(AST::Reveal(Box::new(expression), line_info))
+            match inner.next() {
+                Some(expr) => {
+                    let expression = build_ast(expr)?;
+                    Ok(AST::Reveal(Box::new(expression), line_info.clone()))
+                }
+                None => Ok(AST::Reveal(
+                    Box::new(AST::Abyss(line_info.clone())),
+                    line_info.clone(),
+                )),
+            }
         }
         Rule::oracle_expr => {
             let mut inner = pair.into_inner();
@@ -459,6 +467,86 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                     span,
                 )),
             }
+        }
+        Rule::engrave => {
+            let span = pair.as_span();
+            let mut inner = pair.into_inner();
+            let name = inner.next().unwrap().as_str().to_string();
+            let mut params = Vec::new();
+            if inner.peek().unwrap().as_rule() == Rule::engrave_params {
+                let param_pairs = inner.next().unwrap().into_inner();
+                for param_pair in param_pairs {
+                    let param = build_ast(param_pair)?;
+                    params.push(param);
+                }
+            }
+            let return_type = match inner.peek().unwrap().as_rule() {
+                Rule::engrave_type => {
+                    let return_type = inner.next().unwrap().as_str();
+                    match return_type {
+                        "arcana" => Type::Arcana,
+                        "aether" => Type::Aether,
+                        "rune" => Type::Rune,
+                        "omen" => Type::Omen,
+                        "abyss" => Type::Abyss,
+                        _ => Err(Error::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: format!("Unknown return type in engrave: {}", return_type),
+                            },
+                            span,
+                        ))?,
+                    }
+                }
+                _ => Type::Abyss,
+            };
+            Ok(AST::Engrave {
+                name,
+                params,
+                return_type,
+                body: Box::new(build_ast(inner.next().unwrap())?),
+                line_info,
+            })
+        }
+        Rule::engrave_param => {
+            let span = pair.as_span();
+            let mut inner = pair.into_inner();
+            let name = inner.next().unwrap().as_str().to_string();
+            let param_type = match inner.next().unwrap().as_str() {
+                "arcana" => Type::Arcana,
+                "aether" => Type::Aether,
+                "rune" => Type::Rune,
+                "omen" => Type::Omen,
+                _ => Err(Error::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "Unknown type in engrave parameter".to_string(),
+                    },
+                    span,
+                ))?,
+            };
+            Ok(AST::EngraveParam {
+                name,
+                param_type,
+                line_info,
+            })
+        }
+        Rule::func_call => {
+            let mut inner = pair.into_inner();
+            let name = inner.next().unwrap().as_str().to_string();
+            let mut args = Vec::new();
+            if let Some(peeked) = inner.peek() {
+                if peeked.as_rule() == Rule::func_args {
+                    let arg_pairs = inner.next().unwrap().into_inner();
+                    for arg_pair in arg_pairs {
+                        let arg = build_ast(arg_pair)?;
+                        args.push(arg);
+                    }
+                }
+            }
+            Ok(AST::FuncCall {
+                name,
+                args,
+                line_info,
+            })
         }
         Rule::COMMENT => {
             let comment = pair.as_str().to_string();

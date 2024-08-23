@@ -140,6 +140,7 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             true => "boon".to_string(),
             false => "hex".to_string(),
         },
+        AST::Abyss(_) => "abyss".to_string(),
         AST::Unveil(args, _) => format!(
             "unveil({})",
             args.iter()
@@ -157,7 +158,12 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             format!("trans({} as {})", format_ast(value, indent_level), type_str)
         }
         AST::Reveal(value, _) => {
-            format!("reveal {}", format_ast(value, indent_level))
+            let val = format_ast(value, indent_level);
+            let trimmed_val = val.trim();
+            match trimmed_val {
+                "abyss" => "reveal".to_string(),
+                _ => format!("reveal {}", trimmed_val),
+            }
         }
         AST::Block(statements, _) => {
             let mut result = format!("{}{{\n", indent);
@@ -254,6 +260,60 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             Some(idendifier) => format!("eject {}", idendifier),
             None => "eject".to_string(),
         },
+        AST::Engrave {
+            name,
+            params,
+            return_type,
+            body,
+            ..
+        } => {
+            let return_type_str = match return_type {
+                Type::Arcana => "arcana",
+                Type::Aether => "aether",
+                Type::Rune => "rune",
+                Type::Omen => "omen",
+                Type::Abyss => "",
+            };
+            let params_str = params
+                .iter()
+                .map(|param| format_ast(param, indent_level))
+                .collect::<Vec<_>>()
+                .join(", ");
+            match return_type_str {
+                "" => format!(
+                    "engrave {}({}) {}",
+                    name,
+                    params_str,
+                    format_ast(body, indent_level)
+                ),
+                _ => format!(
+                    "engrave {}({}) -> {} {}",
+                    name,
+                    params_str,
+                    return_type_str,
+                    format_ast(body, indent_level)
+                ),
+            }
+        }
+        AST::EngraveParam {
+            name, param_type, ..
+        } => {
+            let type_str = match param_type {
+                Type::Arcana => "arcana",
+                Type::Aether => "aether",
+                Type::Rune => "rune",
+                _ => "",
+            };
+            format!("{}: {}", name, type_str)
+        }
+        AST::FuncCall { name, args, .. } => {
+            let args_str = args
+                .iter()
+                .map(|arg| format_ast(arg, indent_level))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{}({})", name, args_str)
+        }
         AST::Comment(text, _) => text.clone(),
         _ => format!("Not implemented: {:?}", ast),
     }

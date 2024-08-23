@@ -13,7 +13,7 @@ pub fn test_base(input: &str) -> Result<Vec<EvalResult>, Box<dyn std::error::Err
                 if inner_pair.as_rule() != Rule::EOI {
                     match build_ast(inner_pair) {
                         Ok(ast) => {
-                            // println!("{:#?}", ast);
+                            // println!("{:?}", ast);
                             match evaluate(&ast, &mut env) {
                                 Ok(result) => {
                                     results.push(result);
