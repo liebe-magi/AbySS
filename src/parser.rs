@@ -560,6 +560,23 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
                 line_info,
             })
         }
+        Rule::summon_expr => {
+            let span = pair.as_span();
+            let mut inner = pair.into_inner();
+            let prompt = inner.next().unwrap().as_str().to_string();
+            let var_type = match inner.next().unwrap().as_str() {
+                "arcana" => Type::Arcana,
+                "aether" => Type::Aether,
+                "rune" => Type::Rune,
+                _ => Err(Error::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "Unknown type in summon expression".to_string(),
+                    },
+                    span,
+                ))?,
+            };
+            Ok(AST::Summon(prompt, var_type, line_info))
+        }
         Rule::COMMENT => {
             let comment = pair.as_str().to_string();
             Ok(AST::Comment(comment, line_info))

@@ -1,7 +1,7 @@
 use crate::ast::{AssignmentOp, ConditionalAssignment, LineInfo, Type, AST};
 use crate::env::{Environment, Function, Value};
 use colored::*;
-use std::fmt;
+use std::{fmt, io::Write};
 
 /// Represents the result of an evaluation in the interpreter.
 #[derive(Debug)]
@@ -801,6 +801,43 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 _ => Err(EvalError::TypeError(
                     format!("Type mismatch for return value of function {}", name),
                     function.line_info.clone(),
+                )),
+            }
+        }
+        AST::Summon(prompt, var_type, line_info) => {
+            print!("{}", prompt.trim_matches('"'));
+            std::io::stdout().flush().map_err(|_| {
+                EvalError::InvalidOperation("Failed to flush stdout".to_string(), line_info.clone())
+            })?;
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).map_err(|_| {
+                EvalError::InvalidOperation("Failed to read input".to_string(), line_info.clone())
+            })?;
+            match var_type {
+                Type::Arcana => input
+                    .trim()
+                    .parse::<i64>()
+                    .map(EvalResult::Arcana)
+                    .map_err(|_| {
+                        EvalError::InvalidOperation(
+                            "Failed to parse input as Arcana".to_string(),
+                            line_info.clone(),
+                        )
+                    }),
+                Type::Aether => input
+                    .trim()
+                    .parse::<f64>()
+                    .map(EvalResult::Aether)
+                    .map_err(|_| {
+                        EvalError::InvalidOperation(
+                            "Failed to parse input as Aether".to_string(),
+                            line_info.clone(),
+                        )
+                    }),
+                Type::Rune => Ok(EvalResult::Rune(input.trim().to_string())),
+                _ => Err(EvalError::InvalidOperation(
+                    "Unsupported type for summon".to_string(),
+                    line_info.clone(),
                 )),
             }
         }

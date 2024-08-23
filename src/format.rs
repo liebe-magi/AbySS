@@ -324,6 +324,15 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
                 .join(", ");
             format!("{}({})", name, args_str)
         }
+        AST::Summon(prompt, var_type, _) => {
+            let type_str = match var_type {
+                Type::Arcana => "arcana",
+                Type::Aether => "aether",
+                Type::Rune => "rune",
+                _ => "",
+            };
+            format!("summon({}, {})", prompt, type_str)
+        }
         AST::Comment(text, _) => text.clone(),
         _ => format!("Not implemented: {:?}", ast),
     }

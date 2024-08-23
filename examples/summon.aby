@@ -1,0 +1,4 @@
+forge name: rune = summon("Input your name: ", rune);
+forge age: arcana = summon("Input your age: ", arcana);
+
+unveil("You are ", name, " (", age, ")");
