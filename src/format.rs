@@ -1,12 +1,22 @@
 use crate::ast::{AssignmentOp, Type, AST};
 
+/// Formats an AST node into a readable string with appropriate indentation.
+/// This function handles various types of AST nodes, applying formatting rules based on node type.
+/// It also manages operator precedence to ensure correct placement of parentheses.
+///
+/// # Arguments
+/// * `ast` - The AST node to format.
+/// * `indent_level` - The level of indentation for the formatted output.
+///
+/// # Returns
+/// A formatted string representation of the AST node.
 pub fn format_ast(ast: &AST, indent_level: usize) -> String {
-    let indent = "    ".repeat(indent_level); // インデントを生成
+    let indent = "    ".repeat(indent_level);
 
-    // 優先順位テーブル
+    // Determines the precedence level for an AST node to handle operator precedence.
     let precedence = |node: &AST| match node {
-        AST::LogicalOr(_, _, _) => 10,  // 最も低い優先順位
-        AST::LogicalAnd(_, _, _) => 20, // 次に低い
+        AST::LogicalOr(_, _, _) => 10,
+        AST::LogicalAnd(_, _, _) => 20,
         AST::Equal(_, _, _) | AST::NotEqual(_, _, _) => 30,
         AST::LessThan(_, _, _)
         | AST::LessThanOrEqual(_, _, _)
@@ -14,13 +24,14 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
         | AST::GreaterThanOrEqual(_, _, _) => 40,
         AST::Add(_, _, _) | AST::Sub(_, _, _) => 50,
         AST::Mul(_, _, _) | AST::Div(_, _, _) | AST::Mod(_, _, _) => 60,
-        AST::PowArcana(_, _, _) | AST::PowAether(_, _, _) => 70, // 累乗演算の優先順位が最も高い
-        AST::LogicalNot(_, _) => 80, // 単項演算子（論理否定）も高い優先順位
-        _ => 100,                    // その他のノード
+        AST::PowArcana(_, _, _) | AST::PowAether(_, _, _) => 70,
+        AST::LogicalNot(_, _) => 80,
+        _ => 100,
     };
 
     let current_precedence = precedence(ast);
 
+    // Formats a sub-expression, adding parentheses if necessary based on precedence.
     let format_with_parentheses = |expr: &AST, parent_precedence: u8| -> String {
         let sub_precedence = precedence(expr);
         let code = format_ast(expr, indent_level);
@@ -130,9 +141,9 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
         AST::Arcana(value, _) => format!("{}", value),
         AST::Aether(value, _) => {
             if value.fract() == 0.0 {
-                format!("{:.1}", value) // 小数点以下が0の場合は1桁で表示
+                format!("{:.1}", value)
             } else {
-                format!("{}", value) // それ以外の場合はそのまま表示
+                format!("{}", value)
             }
         }
         AST::Rune(value, _) => format!("\"{}\"", value),
@@ -140,6 +151,7 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             true => "boon".to_string(),
             false => "hex".to_string(),
         },
+        AST::Abyss(_) => "abyss".to_string(),
         AST::Unveil(args, _) => format!(
             "unveil({})",
             args.iter()
@@ -157,7 +169,12 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             format!("trans({} as {})", format_ast(value, indent_level), type_str)
         }
         AST::Reveal(value, _) => {
-            format!("reveal {}", format_ast(value, indent_level))
+            let val = format_ast(value, indent_level);
+            let trimmed_val = val.trim();
+            match trimmed_val {
+                "abyss" => "reveal".to_string(),
+                _ => format!("reveal {}", trimmed_val),
+            }
         }
         AST::Block(statements, _) => {
             let mut result = format!("{}{{\n", indent);
@@ -194,7 +211,6 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             }
             result.push_str(" {\n");
             for branch in branches {
-                // コメントノードの場合はスキップ
                 if let AST::Comment(text, _) = branch {
                     result.push_str(&format!("{}{}\n", "    ".repeat(indent_level + 1), text));
                     continue;
@@ -254,6 +270,69 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             Some(idendifier) => format!("eject {}", idendifier),
             None => "eject".to_string(),
         },
+        AST::Engrave {
+            name,
+            params,
+            return_type,
+            body,
+            ..
+        } => {
+            let return_type_str = match return_type {
+                Type::Arcana => "arcana",
+                Type::Aether => "aether",
+                Type::Rune => "rune",
+                Type::Omen => "omen",
+                Type::Abyss => "",
+            };
+            let params_str = params
+                .iter()
+                .map(|param| format_ast(param, indent_level))
+                .collect::<Vec<_>>()
+                .join(", ");
+            match return_type_str {
+                "" => format!(
+                    "engrave {}({}) {}",
+                    name,
+                    params_str,
+                    format_ast(body, indent_level)
+                ),
+                _ => format!(
+                    "engrave {}({}) -> {} {}",
+                    name,
+                    params_str,
+                    return_type_str,
+                    format_ast(body, indent_level)
+                ),
+            }
+        }
+        AST::EngraveParam {
+            name, param_type, ..
+        } => {
+            let type_str = match param_type {
+                Type::Arcana => "arcana",
+                Type::Aether => "aether",
+                Type::Rune => "rune",
+                _ => "",
+            };
+            format!("{}: {}", name, type_str)
+        }
+        AST::FuncCall { name, args, .. } => {
+            let args_str = args
+                .iter()
+                .map(|arg| format_ast(arg, indent_level))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{}({})", name, args_str)
+        }
+        AST::Summon(prompt, var_type, _) => {
+            let type_str = match var_type {
+                Type::Arcana => "arcana",
+                Type::Aether => "aether",
+                Type::Rune => "rune",
+                _ => "",
+            };
+            format!("summon({}, {})", prompt, type_str)
+        }
         AST::Comment(text, _) => text.clone(),
         _ => format!("Not implemented: {:?}", ast),
     }

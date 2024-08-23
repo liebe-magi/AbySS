@@ -1,0 +1,18 @@
+// Nested function calls
+engrave add(a: arcana, b: arcana) -> arcana {
+    reveal a + b;
+};
+
+engrave add_three_numbers(x: arcana, y: arcana, z: arcana) -> arcana {
+    reveal add(add(x, y), z);
+};
+
+forge result: arcana = add_three_numbers(1, 2, 3);
+unveil(result);
+
+// Function has no return type
+engrave unveil_add(a: arcana, b: arcana) -> abyss {
+    unveil(a + b);
+    reveal;
+};
+unveil_add(100, 28);

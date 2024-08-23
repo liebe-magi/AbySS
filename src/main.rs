@@ -43,6 +43,11 @@ enum Commands {
     },
 }
 
+/// Sets up the AbySS configuration directory in the user's home directory.
+/// This directory is used to store configuration files such as history logs.
+///
+/// # Returns
+/// A `PathBuf` representing the path to the AbySS directory.
 fn setup_abyss_directory() -> PathBuf {
     let home_dir = dirs::home_dir().expect("Unable to find home directory");
     let abyss_dir = home_dir.join(".abyss");
@@ -54,16 +59,22 @@ fn setup_abyss_directory() -> PathBuf {
     abyss_dir
 }
 
+/// Returns the path to the AbySS history file stored in the AbySS directory.
+///
+/// # Returns
+/// A `PathBuf` representing the path to the history file.
 fn get_history_file_path() -> PathBuf {
     let abyss_dir = setup_abyss_directory();
     abyss_dir.join("abyss_history.log")
 }
 
+/// Executes a given AbySS script by parsing and evaluating it in a new environment.
+///
+/// # Arguments
+/// * `script` - A string containing the AbySS script to be executed.
 fn execute_script(script: &str) {
-    // 環境を初期化
     let mut env = Environment::new();
 
-    // スクリプトをパースして評価
     match parse(script) {
         Ok(pair) => {
             for inner_pair in pair.into_inner() {
@@ -97,15 +108,17 @@ fn execute_script(script: &str) {
     }
 }
 
+/// Formats the provided AbySS script by parsing and reconstructing it with proper indentation.
+///
+/// # Arguments
+/// * `script` - A string containing the AbySS script to be formatted.
 fn execute_format(script: &str) {
-    // スクリプトをパースして評価
     match parse(script) {
         Ok(pair) => {
             for inner_pair in pair.into_inner() {
                 if inner_pair.as_rule() != Rule::EOI {
                     match build_ast(inner_pair) {
                         Ok(ast) => {
-                            // println!("AST: {:#?}", ast);
                             let formatted_code = format_ast(&ast, 0);
                             println!("{}", formatted_code);
                         }
@@ -118,6 +131,10 @@ fn execute_format(script: &str) {
     }
 }
 
+/// Starts the interactive AbySS interpreter, allowing the user to enter and execute AbySS code line by line.
+///
+/// # Arguments
+/// * `debug` - A boolean flag to enable debug mode, which prints the AST of the parsed code.
 fn start_interpreter(debug: bool) {
     println!("Starting AbySS interpreter...");
     println!("Type 'exit' or press Ctrl+D to exit the interpreter.\n");
@@ -126,7 +143,6 @@ fn start_interpreter(debug: bool) {
     let mut current_statement = String::new();
     let mut env = Environment::new();
 
-    // rustylineのEditorを作成し、履歴を有効化
     let history_path = get_history_file_path();
     let mut rl = Editor::<(), FileHistory>::new().expect("Error: Failed to create editor");
     let _ = rl.load_history(&history_path);
@@ -140,7 +156,7 @@ fn start_interpreter(debug: bool) {
             ),
         )
         .blue()
-        .bold(); // 青の太文字で表示
+        .bold();
         let readline = rl.readline(&prompt.to_string());
 
         match readline {
@@ -156,9 +172,7 @@ fn start_interpreter(debug: bool) {
                     }
                     "show" => {
                         println!("=== Current Session Code ===");
-
                         println!("{}", &current_session_code);
-
                         println!("============================");
                         current_statement.clear();
                         continue;
@@ -167,19 +181,16 @@ fn start_interpreter(debug: bool) {
                 }
 
                 match rl.add_history_entry(line.as_str()) {
-                    Ok(_) => {} // 正常に履歴が追加された場合は何もしない
-                    Err(err) => println!("Failed to add history: {:?}", err), // エラーが発生した場合にエラーメッセージを表示
+                    Ok(_) => {}
+                    Err(err) => println!("Failed to add history: {:?}", err),
                 }
 
-                // 文を結合
                 current_statement.push_str(&line);
 
-                // ブロック深度に基づいてインタープリタの動作を調整
                 let open_braces = current_statement.matches('{').count();
                 let close_braces = current_statement.matches('}').count();
 
                 if open_braces == close_braces && current_statement.ends_with(';') {
-                    // ブロックが閉じた状態でセミコロンで終わっていれば、文をパースして評価
                     match parse(&current_statement) {
                         Ok(pair) => {
                             for inner_pair in pair.into_inner() {
@@ -252,7 +263,6 @@ fn main() {
 
     match &cli.command {
         Commands::Invoke { script } => {
-            // .abyファイルを読み込んで実行
             if let Ok(contents) = fs::read_to_string(script) {
                 execute_script(&contents);
             } else {
@@ -260,11 +270,9 @@ fn main() {
             }
         }
         Commands::Cast { debug } => {
-            // インタープリタモードの開始
             start_interpreter(*debug);
         }
         Commands::Align { script } => {
-            // .abyファイルを読み込んで実行
             if let Ok(contents) = fs::read_to_string(script) {
                 execute_format(&contents);
             } else {
