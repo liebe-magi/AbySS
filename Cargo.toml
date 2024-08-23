@@ -1,6 +1,6 @@
 [package]
 name = "abyss-lang"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 authors = ["liebe-magi <liebe.magi@gmail.com>"]
 description = "AbySS: Advanced-scripting by Symbolic Syntax"
