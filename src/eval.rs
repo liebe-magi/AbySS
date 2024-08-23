@@ -3,6 +3,7 @@ use crate::env::{Environment, Function, Value};
 use colored::*;
 use std::fmt;
 
+/// Represents the result of an evaluation in the interpreter.
 #[derive(Debug)]
 pub enum EvalResult {
     Omen(bool),
@@ -15,6 +16,7 @@ pub enum EvalResult {
     Eject(Option<String>),
 }
 
+/// Represents possible errors that can occur during evaluation.
 #[derive(Debug)]
 pub enum EvalError {
     UndefinedVariable(String, Option<LineInfo>),
@@ -37,11 +39,12 @@ impl fmt::Display for EvalError {
 }
 impl std::error::Error for EvalError {}
 
+/// Displays an error message along with the relevant source code and line information, if available.
 pub fn display_error_with_source(script: &str, line_info: Option<LineInfo>, error_message: &str) {
     if let Some(info) = line_info {
         let lines: Vec<&str> = script.lines().collect();
         if let Some(source_line) = lines.get(info.line - 1) {
-            // 行番号は1から始まるため -1
+            // Line numbers start from 1, so we subtract 1
             eprintln!(
                 "{}",
                 format!(
@@ -60,6 +63,16 @@ pub fn display_error_with_source(script: &str, line_info: Option<LineInfo>, erro
     }
 }
 
+/// Evaluates an abstract syntax tree (AST) node in the given environment.
+///
+/// # Arguments
+///
+/// * `ast` - The AST node to be evaluated.
+/// * `env` - The environment containing variable and function bindings.
+///
+/// # Returns
+///
+/// The result of the evaluation, or an `EvalError` if an error occurs.
 pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalError> {
     match ast {
         AST::Statement(node, _line_info) => evaluate(node, env),
@@ -449,9 +462,8 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             branches,
             line_info,
         } => {
-            env.push_scope(); // 新しいスコープを作成
+            env.push_scope();
 
-            // 条件式を評価して環境に代入するヘルパー関数
             let mut evaluate_and_set_var =
                 |conditional: &ConditionalAssignment| -> Result<(), EvalError> {
                     let result = evaluate(&conditional.expression, env)?;
@@ -494,14 +506,11 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                     Ok(())
                 };
 
-            // 条件式が指定されている場合、すべての条件式を評価して環境に代入
             for conditional in conditionals {
                 evaluate_and_set_var(conditional)?;
             }
 
-            // 分岐の評価処理
             for branch in branches {
-                // コメントノードの場合はスキップ
                 if let AST::Comment(_, _) = branch {
                     continue;
                 }
@@ -513,13 +522,10 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 } = branch
                 {
                     let matched = if pattern.is_empty() {
-                        // デフォルトブランチ
                         true
                     } else if *is_match {
-                        // パターンマッチング
                         let mut matched = true;
                         for (idx, pattern) in pattern.iter().enumerate() {
-                            // patternがOracleDontCareItemの場合は条件を満たす
                             if let AST::OracleDontCareItem(_) = pattern {
                                 continue;
                             }
@@ -562,13 +568,11 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                         }
                         matched
                     } else {
-                        // Omen型パターンマッチング
                         pattern.iter().all(|pattern| {
                             matches!(evaluate(pattern, env), Ok(EvalResult::Omen(true)))
                         })
                     };
 
-                    // パターンが一致したらブランチを評価して終了
                     if matched {
                         let result = match evaluate(&body, env) {
                             Ok(result) => match result {
@@ -577,13 +581,13 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                             },
                             Err(e) => return Err(e),
                         };
-                        env.pop_scope(); // スコープを終了
+                        env.pop_scope();
                         return Ok(result);
                     }
                 }
             }
 
-            env.pop_scope(); // スコープを終了
+            env.pop_scope();
             Ok(EvalResult::Abyss)
         }
         AST::Reveal(expr, _line_info) => {
@@ -605,20 +609,16 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             }
             Ok(last_result)
         }
-        AST::OracleDontCareItem(_line_info) => {
-            Ok(EvalResult::Omen(true)) // ワイルドカードは常に真
-        }
+        AST::OracleDontCareItem(_line_info) => Ok(EvalResult::Omen(true)),
         AST::Orbit {
             params,
             body,
             line_info,
         } => {
             if params.is_empty() {
-                // パラメータがない場合、無限ループを実行
                 loop {
-                    env.push_scope(); // 新しいスコープを作成
+                    env.push_scope();
 
-                    // ループ本体の評価
                     let result = evaluate(body, env)?;
 
                     match result {
@@ -627,12 +627,11 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                         _ => {}
                     }
 
-                    env.pop_scope(); // スコープを終了
+                    env.pop_scope();
                 }
 
                 Ok(EvalResult::Abyss)
             } else {
-                // 最初のパラメータを取り出し、それに対するループ処理を行う
                 if let AST::OrbitParam {
                     name,
                     start,
@@ -644,16 +643,14 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                     let start_value = evaluate(start, env)?;
                     let end_value = evaluate(end, env)?;
 
-                    // Arcana型である必要がある（整数型のループパラメータ）
                     if let (EvalResult::Arcana(start_num), EvalResult::Arcana(end_num)) =
                         (start_value, end_value)
                     {
                         let range = start_num..end_num + if op == ".." { 0 } else { 1 };
 
                         for value in range {
-                            env.push_scope(); // 新しいスコープを作成
+                            env.push_scope();
 
-                            // パラメータを環境に追加
                             env.set_var(
                                 name.clone(),
                                 Value::Arcana(value),
@@ -662,7 +659,6 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                                 line_info.clone(),
                             );
 
-                            // 残りのパラメータで再帰的に処理を行う
                             let remaining_params = params[1..].to_vec();
                             let result = match remaining_params.len() == 0 {
                                 true => evaluate(body, env)?,
@@ -680,7 +676,7 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                                 EvalResult::Resume(identifier) => {
                                     if let Some(id) = identifier {
                                         if id == *name {
-                                            continue; // 現在のループを再開
+                                            continue;
                                         } else {
                                             env.pop_scope();
                                             return Ok(EvalResult::Resume(Some(id)));
@@ -691,7 +687,7 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                                 EvalResult::Eject(identifier) => {
                                     if let Some(id) = identifier {
                                         if id == *name {
-                                            break; // 現在のループを抜ける
+                                            break;
                                         } else {
                                             env.pop_scope();
                                             return Ok(EvalResult::Eject(Some(id)));
@@ -702,7 +698,7 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                                 _ => {}
                             }
 
-                            env.pop_scope(); // スコープを終了
+                            env.pop_scope();
                         }
                         Ok(EvalResult::Abyss)
                     } else {
@@ -728,7 +724,6 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             body,
             line_info,
         } => {
-            // 関数を環境に登録
             let function = Function {
                 name: name.clone(),
                 params: params.clone(),
@@ -744,27 +739,22 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
             args,
             line_info,
         } => {
-            // 関数の取得
             let function = {
                 env.get_function(name)
                     .ok_or_else(|| EvalError::UndefinedVariable(name.clone(), line_info.clone()))?
             }
             .clone();
 
-            // パラメータを先にクローンしておく
             let params = function.params.clone();
 
-            // まず、引数を評価し、その結果を保存
             let mut evaluated_args = Vec::new();
             for arg in args {
                 let evaluated_arg = evaluate(arg, env)?;
                 evaluated_args.push(evaluated_arg);
             }
 
-            // 新しいスコープで関数実行
             env.push_scope();
 
-            // 引数の評価結果と関数パラメータへの対応付け
             for (evaluated_arg, param) in evaluated_args.into_iter().zip(params.iter()) {
                 let (name, param_type) = match param {
                     AST::EngraveParam {
@@ -798,12 +788,10 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 );
             }
 
-            // 関数ボディの評価
             let result = evaluate(&function.body, env)?;
 
-            env.pop_scope(); // スコープを終了
+            env.pop_scope();
 
-            // resultがfunctionの戻り値の型と一致するか確認
             match (result, function.return_type) {
                 (EvalResult::Arcana(n), Type::Arcana) => Ok(EvalResult::Arcana(n)),
                 (EvalResult::Aether(n), Type::Aether) => Ok(EvalResult::Aether(n)),
@@ -816,9 +804,7 @@ pub fn evaluate(ast: &AST, env: &mut Environment) -> Result<EvalResult, EvalErro
                 )),
             }
         }
-        AST::Comment(_, _) => {
-            Ok(EvalResult::Abyss) // コメントは何もしない
-        }
+        AST::Comment(_, _) => Ok(EvalResult::Abyss),
         _ => Err(EvalError::InvalidOperation(
             format!("Unsupported operation: {:?}", ast),
             None,

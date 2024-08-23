@@ -1,12 +1,22 @@
 use crate::ast::{AssignmentOp, Type, AST};
 
+/// Formats an AST node into a readable string with appropriate indentation.
+/// This function handles various types of AST nodes, applying formatting rules based on node type.
+/// It also manages operator precedence to ensure correct placement of parentheses.
+///
+/// # Arguments
+/// * `ast` - The AST node to format.
+/// * `indent_level` - The level of indentation for the formatted output.
+///
+/// # Returns
+/// A formatted string representation of the AST node.
 pub fn format_ast(ast: &AST, indent_level: usize) -> String {
-    let indent = "    ".repeat(indent_level); // インデントを生成
+    let indent = "    ".repeat(indent_level);
 
-    // 優先順位テーブル
+    // Determines the precedence level for an AST node to handle operator precedence.
     let precedence = |node: &AST| match node {
-        AST::LogicalOr(_, _, _) => 10,  // 最も低い優先順位
-        AST::LogicalAnd(_, _, _) => 20, // 次に低い
+        AST::LogicalOr(_, _, _) => 10,
+        AST::LogicalAnd(_, _, _) => 20,
         AST::Equal(_, _, _) | AST::NotEqual(_, _, _) => 30,
         AST::LessThan(_, _, _)
         | AST::LessThanOrEqual(_, _, _)
@@ -14,13 +24,14 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
         | AST::GreaterThanOrEqual(_, _, _) => 40,
         AST::Add(_, _, _) | AST::Sub(_, _, _) => 50,
         AST::Mul(_, _, _) | AST::Div(_, _, _) | AST::Mod(_, _, _) => 60,
-        AST::PowArcana(_, _, _) | AST::PowAether(_, _, _) => 70, // 累乗演算の優先順位が最も高い
-        AST::LogicalNot(_, _) => 80, // 単項演算子（論理否定）も高い優先順位
-        _ => 100,                    // その他のノード
+        AST::PowArcana(_, _, _) | AST::PowAether(_, _, _) => 70,
+        AST::LogicalNot(_, _) => 80,
+        _ => 100,
     };
 
     let current_precedence = precedence(ast);
 
+    // Formats a sub-expression, adding parentheses if necessary based on precedence.
     let format_with_parentheses = |expr: &AST, parent_precedence: u8| -> String {
         let sub_precedence = precedence(expr);
         let code = format_ast(expr, indent_level);
@@ -130,9 +141,9 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
         AST::Arcana(value, _) => format!("{}", value),
         AST::Aether(value, _) => {
             if value.fract() == 0.0 {
-                format!("{:.1}", value) // 小数点以下が0の場合は1桁で表示
+                format!("{:.1}", value)
             } else {
-                format!("{}", value) // それ以外の場合はそのまま表示
+                format!("{}", value)
             }
         }
         AST::Rune(value, _) => format!("\"{}\"", value),
@@ -200,7 +211,6 @@ pub fn format_ast(ast: &AST, indent_level: usize) -> String {
             }
             result.push_str(" {\n");
             for branch in branches {
-                // コメントノードの場合はスキップ
                 if let AST::Comment(text, _) = branch {
                     result.push_str(&format!("{}{}\n", "    ".repeat(indent_level + 1), text));
                     continue;
