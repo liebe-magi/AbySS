@@ -111,7 +111,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.target }}-${{steps.properties.outputs.version}}
-          path: target/${{ matrix.target }}/release/fuga
+          path: target/${{ matrix.target }}/release/abyss
 
   draft-release:
     name: Release Draft
@@ -186,12 +186,12 @@ jobs:
           name: build-${{ matrix.target }}-${{ needs.build.outputs.version }}
           path: build/
       - name: zip the artifact
-        run: zip -j build/fuga.zip build/fuga
+        run: zip -j build/abyss.zip build/abyss
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.upload-url.outputs.url }}
-          asset_path: ./build/fuga.zip
-          asset_name: fuga-${{ matrix.target }}-${{ needs.build.outputs.version }}.zip
+          asset_path: ./build/abyss.zip
+          asset_name: abyss-${{ matrix.target }}-${{ needs.build.outputs.version }}.zip
           asset_content_type: application/zip
