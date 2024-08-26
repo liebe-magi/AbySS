@@ -9,15 +9,12 @@ statement  = { (forge_var | engrave | unveil | reveal | orbit | orbit_flow | ass
 block      = { "{" ~ statement* ~ "}" }
 
 forge_var  = { "forge" ~ morph? ~ identifier ~ ":" ~ type ~ "=" ~ expression }
-assignment = { identifier ~ assignment_op ~ expression }
+assignment = { postfix_expr ~ assignment_op ~ expression }
 
 engrave        = { "engrave" ~ identifier ~ "(" ~ engrave_params? ~ ")" ~ ("->" ~ engrave_type)? ~ block }
 engrave_params = { engrave_param ~ ("," ~ engrave_param)* }
 engrave_param  = { identifier ~ ":" ~ type }
 engrave_type   = { type }
-
-func_call = { identifier ~ "(" ~ func_args? ~ ")" }
-func_args = { expression ~ ("," ~ expression)* }
 
 unveil = { "unveil" ~ "(" ~ expression ~ ("," ~ expression)* ~ ")" }
 reveal = { "reveal" ~ expression? }
@@ -48,25 +45,35 @@ summon_expr = { "summon" ~ "(" ~ rune ~ "," ~ type ~ ")" }
 
 identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
-type   =  { "omen" | "aether" | "arcana" | "rune" | "abyss" }
-omen   = @{ "boon" | "hex" }
-aether = @{ sign? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
-arcana = @{ sign? ~ ASCII_DIGIT+ }
-rune   = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+type            =  { "omen" | "aether" | "arcana" | "rune" | "abyss" | collection_type }
+omen            = @{ "boon" | "hex" }
+aether          = @{ sign? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+arcana          = @{ sign? ~ ASCII_DIGIT+ }
+rune            = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+collection_type =  { (arc_type | lex_type | syn_type) }
+arc_type        =  { "arc" ~ "<" ~ type ~ ">" }
+lex_type        =  { "lex" ~ "<" ~ type ~ "," ~ type ~ ">" }
+syn_type        =  { "syn" ~ "<" ~ type ~ ">" }
 
 sign  = { "+" | "-" }
 morph = { "morph" }
 
-expressions = { expression ~ ("," ~ expression)* }
-expression  = { oracle_expr | or_expr }
-or_expr     = { and_expr ~ (or_op ~ and_expr)* }
-and_expr    = { not_expr ~ (and_op ~ not_expr)* }
-not_expr    = { not_op? ~ comp_expr }
-comp_expr   = { add_expr ~ (comp_op ~ add_expr)? }
-add_expr    = { mul_expr ~ (add_op ~ mul_expr)* }
-mul_expr    = { pow_expr ~ (mul_op ~ pow_expr)* }
-pow_expr    = { factor ~ (pow_op ~ factor)* }
-factor      = { trans_expr | summon_expr | omen | aether | arcana | rune | func_call | identifier | "(" ~ expression ~ ")" }
+expressions  = { expression ~ ("," ~ expression)* }
+expression   = { oracle_expr | or_expr }
+or_expr      = { and_expr ~ (or_op ~ and_expr)* }
+and_expr     = { not_expr ~ (and_op ~ not_expr)* }
+not_expr     = { not_op? ~ comp_expr }
+comp_expr    = { add_expr ~ (comp_op ~ add_expr)? }
+add_expr     = { mul_expr ~ (add_op ~ mul_expr)* }
+mul_expr     = { pow_expr ~ (mul_op ~ pow_expr)* }
+pow_expr     = { postfix_expr ~ (pow_op ~ postfix_expr)* }
+postfix_expr = { primary_expr ~ (index_access | method_call)* }
+primary_expr = { trans_expr | summon_expr | func_call | omen | aether | arcana | rune | identifier | collection_literal | "(" ~ expression ~ ")" }
+
+func_call    = { identifier ~ "(" ~ func_args? ~ ")" }
+func_args    = { expression ~ ("," ~ expression)* }
+method_call  = { "." ~ identifier ~ "(" ~ func_args? ~ ")" }
+index_access = { "[" ~ expression ~ "]" }
 
 assignment_op = { "+=" | "-=" | "*=" | "/=" | "%=" | "^=" | "**=" | "=" }
 
@@ -77,3 +84,11 @@ pow_op  = { "^" | "**" }
 or_op   = { "||" }
 and_op  = { "&&" }
 not_op  = { "!" }
+
+collection_literal = { arc_literal | lex_literal | syn_literal }
+arc_literal        = { "[" ~ expressions? ~ "]" }
+lex_literal        = { "{" ~ lex_pairs? ~ "}" }
+syn_literal        = { "{" ~ expressions? ~ "}" }
+
+lex_pairs = { lex_pair ~ ("," ~ lex_pair)* }
+lex_pair  = { expression ~ ":" ~ expression }

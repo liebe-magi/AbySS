@@ -190,7 +190,14 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
             }
             Ok(ast)
         }
-        Rule::factor => build_ast(pair.into_inner().next().unwrap()),
+        Rule::postfix_expr => {
+            let mut inner = pair.into_inner();
+            let mut ast = build_ast(inner.next().unwrap())?;
+            println!("{:?}", ast);
+            println!("{:?}", inner.peek());
+            Ok(ast)
+        }
+        Rule::primary_expr => build_ast(pair.into_inner().next().unwrap()),
         Rule::omen => {
             let value = pair.as_str();
             match value {
@@ -255,6 +262,7 @@ pub fn build_ast(pair: Pair<Rule>) -> Result<AST, Error<Rule>> {
             let span = pair.as_span();
             let mut inner = pair.into_inner();
             let var_name = inner.next().unwrap().as_str().to_string();
+            let var_name = var_name.trim().to_string();
             let op = match inner.next().unwrap().as_str() {
                 "=" => AssignmentOp::Assign,
                 "+=" => AssignmentOp::AddAssign,

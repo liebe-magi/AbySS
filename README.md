@@ -1,4 +1,5 @@
 [![Crates.io Version](https://img.shields.io/crates/v/abyss-lang)](https://crates.io/crates/abyss-lang)
+[![Crates.io](https://img.shields.io/crates/l/abyss-lang)](https://github.com/liebe-magi/abyss/blob/main/LICENSE)
 [![Build](https://github.com/liebe-magi/abyss/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/liebe-magi/abyss/actions/workflows/build.yml)
 
 # **AbySS: Advanced-scripting by Symbolic Syntax**
