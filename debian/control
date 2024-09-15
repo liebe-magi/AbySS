@@ -1,0 +1,13 @@
+Source: abyss-lang
+Section: devel
+Priority: optional
+Maintainer: liebe-magi <liebe.magi@gmail.com>
+Build-Depends: debhelper (>= 11), cargo
+Standards-Version: 4.5.0
+Homepage: https://github.com/liebe-magi/AbySS
+
+Package: abyss-lang
+Architecture: any
+Depends: ${misc:Depends}
+Description: AbySS: The Programming Language
+  AbySS (Advanced-scripting by Symbolic Syntax) is a programming language designed to combine the thrill of casting spells with the power of advanced scripting.
